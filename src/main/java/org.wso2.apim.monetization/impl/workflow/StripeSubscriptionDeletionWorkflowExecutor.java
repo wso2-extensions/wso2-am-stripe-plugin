@@ -50,10 +50,12 @@ import java.util.Map;
  * Simple workflow executor for subscription delete action
  */
 public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor {
+
     private static final Log log = LogFactory.getLog(StripeSubscriptionDeletionWorkflowExecutor.class);
 
     @Override
     public String getWorkflowType() {
+
         return WorkflowConstants.WF_TYPE_AM_SUBSCRIPTION_DELETION;
     }
 
@@ -66,6 +68,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
 
     @Override
     public WorkflowResponse execute(WorkflowDTO workflowDTO) throws WorkflowException {
+
         workflowDTO.setStatus(WorkflowStatus.APPROVED);
         complete(workflowDTO);
         super.publishEvents(workflowDTO);
@@ -73,13 +76,13 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
     }
 
     @Override
-    public  WorkflowResponse deleteMonetizedSubscription(WorkflowDTO workflowDTO, API api) throws WorkflowException {
+    public WorkflowResponse deleteMonetizedSubscription(WorkflowDTO workflowDTO, API api) throws WorkflowException {
 
         SubscriptionWorkflowDTO subWorkflowDTO;
         MonetizedSubscription monetizedSubscription;
         Stripe.apiKey = "sk_test_1Y8cd8EgnY1KYtBcs1vObHUF00020Je2H4";
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
-        StripeMonetizationDAO stripeMonetizationDAO =  new StripeMonetizationDAO();
+        StripeMonetizationDAO stripeMonetizationDAO = new StripeMonetizationDAO();
         subWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
 
         String connectedAccountKey = StringUtils.EMPTY;
@@ -105,32 +108,31 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
             monetizedSubscription = stripeMonetizationDAO.getMonetizedSubscription(subWorkflowDTO.getApiName(),
                     subWorkflowDTO.getApiVersion(), subWorkflowDTO.getApiProvider(), subWorkflowDTO.getApplicationId(),
                     subWorkflowDTO.getTenantDomain());
-        }catch (StripeMonetizationException ex){
-            throw new WorkflowException("Could not complete subscription deletion workflow",ex);
+        } catch (StripeMonetizationException ex) {
+            throw new WorkflowException("Could not complete subscription deletion workflow", ex);
         }
 
-        if(monetizedSubscription.getSubscriptionId() != null){
+        if (monetizedSubscription.getSubscriptionId() != null) {
             try {
                 Subscription subscription = Subscription.retrieve(monetizedSubscription.getSubscriptionId(),
                         requestOptions);
                 Map<String, Object> params = new HashMap<>();
                 params.put("invoice_now", true);
-                subscription = subscription.cancel(params,requestOptions);
-                if(subscription.getStatus().equals("canceled")) {
+                subscription = subscription.cancel(params, requestOptions);
+                if (subscription.getStatus().equals("canceled")) {
                     stripeMonetizationDAO.removeMonetizedSubscription(monetizedSubscription.getId());
                 }
-                if(log.isDebugEnabled()){
-                    String msg = "Monetized Subscriprion for API : "+subWorkflowDTO.getApiName()+" by Application : "
-                            +subWorkflowDTO.getApplicationName()+ " is removed successfully ";
+                if (log.isDebugEnabled()) {
+                    String msg = "Monetized Subscriprion for API : " + subWorkflowDTO.getApiName() + " by Application : "
+                            + subWorkflowDTO.getApplicationName() + " is removed successfully ";
                     log.debug(msg);
                 }
-            }catch (StripeException ex)
-            {
+            } catch (StripeException ex) {
                 String errorMessage = "Failed to remove Subcription in Billing Engine";
                 log.error(errorMessage);
                 throw new WorkflowException("Could not complete subscription deletion workflow for "
                         + subWorkflowDTO.getApiName(), ex);
-            } catch (StripeMonetizationException ex){
+            } catch (StripeMonetizationException ex) {
                 String errorMessage = "Failed to remove Subcription info from DB";
                 log.error(errorMessage);
                 throw new WorkflowException("Could not complete subscription deletion workflow for "
@@ -138,11 +140,12 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
             }
         }
 
-        return  new GeneralWorkflowResponse();
+        return new GeneralWorkflowResponse();
     }
 
     @Override
     public WorkflowResponse complete(WorkflowDTO workflowDTO) throws WorkflowException {
+
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
         SubscriptionWorkflowDTO subWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
         String errorMsg = null;

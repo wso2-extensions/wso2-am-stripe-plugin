@@ -2,6 +2,11 @@ package org.wso2.apim.monetization.impl.model;
 
 public class MonetizationPlatformCustomer {
 
+    private int tenantId;
+    private String customerId;
+    private int id;
+    private String subscriberName;
+
     public int getId() {
 
         return id;
@@ -11,10 +16,6 @@ public class MonetizationPlatformCustomer {
 
         this.id = id;
     }
-
-    private int id;
-
-    private String subscriberName;
 
     public int getTenantId() {
 
@@ -26,9 +27,6 @@ public class MonetizationPlatformCustomer {
         this.tenantId = tenantId;
     }
 
-    private int tenantId;
-    private String customerId;
-
     public String getSubscriberName() {
 
         return subscriberName;
@@ -39,8 +37,6 @@ public class MonetizationPlatformCustomer {
         this.subscriberName = subscriberName;
     }
 
-
-
     public String getCustomerId() {
 
         return customerId;
@@ -50,7 +46,4 @@ public class MonetizationPlatformCustomer {
 
         this.customerId = customerId;
     }
-
-
-
 }

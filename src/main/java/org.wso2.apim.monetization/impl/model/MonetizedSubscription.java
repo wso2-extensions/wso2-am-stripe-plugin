@@ -2,6 +2,13 @@ package org.wso2.apim.monetization.impl.model;
 
 public class MonetizedSubscription {
 
+    private int id;
+    private int subscribedApiId;
+    private int subscribedApplicationId;
+    private int tenantId;
+    private String subscriptionId;
+    private int sharedCustomerId;
+
     public int getId() {
 
         return id;
@@ -61,12 +68,5 @@ public class MonetizedSubscription {
 
         this.sharedCustomerId = sharedCustomerId;
     }
-
-    private int id;
-    private int subscribedApiId;
-    private int subscribedApplicationId;
-    private int tenantId;
-    private String subscriptionId;
-    private int sharedCustomerId;
 
 }

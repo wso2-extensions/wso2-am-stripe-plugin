@@ -1,14 +1,26 @@
 package org.wso2.apim.monetization.impl;
 
 import com.google.gson.Gson;
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
 import com.stripe.model.Invoice;
+import com.stripe.model.Plan;
+import com.stripe.model.Product;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.model.UsageRecord;
-import org.apache.openjpa.persistence.jest.JSON;
+import com.stripe.net.RequestOptions;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.wso2.apim.monetization.impl.model.MonetizedSubscription;
 import org.wso2.carbon.apimgt.api.APIAdmin;
+import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.MonetizationException;
 import org.wso2.carbon.apimgt.api.model.API;
@@ -20,21 +32,8 @@ import org.wso2.carbon.apimgt.api.model.Tier;
 import org.wso2.carbon.apimgt.api.model.policy.SubscriptionPolicy;
 import org.wso2.carbon.apimgt.impl.APIAdminImpl;
 import org.wso2.carbon.apimgt.impl.APIConstants;
-import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
-import com.stripe.Stripe;
-import com.stripe.exception.StripeException;
-import com.stripe.model.Plan;
-import com.stripe.model.Product;
-import com.stripe.net.RequestOptions;
-import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
+import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.usage.client.APIUsageStatisticsClientConstants;
 import org.wso2.carbon.apimgt.usage.client.exception.APIMgtUsageQueryServiceClientException;
@@ -45,17 +44,15 @@ import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
+import java.nio.charset.Charset;
 import java.sql.Connection;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.nio.charset.Charset;
-import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
-
-import static org.wso2.carbon.user.mgt.internal.UserMgtDSComponent.getRegistryService;
 
 /**
  * This class is used to implement stripe based monetization
@@ -528,7 +525,7 @@ public class StripeMonetizationImpl implements Monetization {
             log.error(errorMessage);
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " +  api.getId().getApiName() +
+            String errorMessage = "Failed to get API ID from database for : " + api.getId().getApiName() +
                     " when disabling monetization.";
             log.error(errorMessage);
             throw new MonetizationException(errorMessage, e);
@@ -561,7 +558,7 @@ public class StripeMonetizationImpl implements Monetization {
             log.error(errorMessage);
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " +  api.getId().getApiName() +
+            String errorMessage = "Failed to get API ID from database for : " + api.getId().getApiName() +
                     " when getting tier to billing engine plan mapping.";
             log.error(errorMessage);
             throw new MonetizationException(errorMessage, e);
@@ -569,6 +566,7 @@ public class StripeMonetizationImpl implements Monetization {
     }
 
     public Map<String, String> getCurrentUsage(String s, APIProvider apiProvider) throws MonetizationException {
+
         return null;
     }
 
@@ -580,7 +578,8 @@ public class StripeMonetizationImpl implements Monetization {
      * @throws MonetizationException if the action failed
      */
     public boolean publishMonetizationUsageRecords(MonetizationUsagePublishInfo lastPublishInfo)
-            throws MonetizationException{
+            throws MonetizationException {
+
         String apiName = null;
         String apiVersion = null;
         String tenantDomain = null;
@@ -594,7 +593,7 @@ public class StripeMonetizationImpl implements Monetization {
         int counter = 0;
         MonetizationUsagePublishInfo monetizationUsagePublishInfo = new MonetizationUsagePublishInfo();
         JSONObject jsonObj = null;
-        APIAdmin apiAdmin =  new APIAdminImpl();
+        APIAdmin apiAdmin = new APIAdminImpl();
 
         // TODO change all time to UTC after code review
         DateFormat df = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
@@ -607,10 +606,10 @@ public class StripeMonetizationImpl implements Monetization {
             APIUsageStatisticsRestClientImpl apiUsageStatisticsRestClient = new APIUsageStatisticsRestClientImpl();
             jsonObj = apiUsageStatisticsRestClient.getUsageCountForMonetization(
                     monetizationUsagePublishInfo.getLastPublishTime(), currentTimestamp);
-        } catch (APIMgtUsageQueryServiceClientException e){
+        } catch (APIMgtUsageQueryServiceClientException e) {
             String errorMessage = "Failed to get the API Usage count for Monetization";
             log.error(errorMessage);
-            throw new MonetizationException(errorMessage,e);
+            throw new MonetizationException(errorMessage, e);
         }
 
         log.info("Usage record publisher is running");
@@ -625,21 +624,21 @@ public class StripeMonetizationImpl implements Monetization {
                         apiVersion = (String) recordArray.get(1);
                         apiProvider = (String) recordArray.get(2);
                         tenantDomain = (String) recordArray.get(3);
-                        applicationId = Integer.parseInt((String)recordArray.get(4));
+                        applicationId = Integer.parseInt((String) recordArray.get(4));
                         requestCount = (Long) recordArray.get(5);
                         MonetizedSubscription subscription = stripeMonetizationDAO.getMonetizedSubscription(apiName, apiVersion,
                                 apiProvider, applicationId, tenantDomain);
 
-                        if(subscription.getSubscriptionId() != null) {
+                        if (subscription.getSubscriptionId() != null) {
                             Connection conn = null;
-                            APIIdentifier identifier = new APIIdentifier(apiProvider,apiName,apiVersion);
+                            APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
                             APIUtil.getAPIPath(identifier);
                             try {
                                 //read tenant conf and get platform account key
                                 Stripe.apiKey = getStripePlatformAccountKey(tenantDomain);
                             } catch (StripeMonetizationException e) {
                                 String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                                        tenantDomain + " when disabling monetization for API : "+apiName;
+                                        tenantDomain + " when disabling monetization for API : " + apiName;
                                 log.error(errorMessage);
                                 throw new MonetizationException(errorMessage, e);
                             }
@@ -674,19 +673,19 @@ public class StripeMonetizationImpl implements Monetization {
                                 Map<String, Object> usageRecordParams = new HashMap<String, Object>();
                                 usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
                                 usageRecordParams.put(StripeMonetizationConstants.TIMESTAMP,
-                                        getTimestamp(currentDate.toString()) / 1000);
+                                        getTimestamp(currentDate) / 1000);
                                 usageRecordParams.put(StripeMonetizationConstants.ACTION,
                                         StripeMonetizationConstants.INCREMENT);
                                 RequestOptions usageRequestOptions = RequestOptions.builder().
                                         setStripeAccount(ConnectId).setIdempotencyKey(subscriptionItem.getId() +
-                                        lastPublishInfo.getLastPublishTime()+requestCount).build();
+                                        lastPublishInfo.getLastPublishTime() + requestCount).build();
                                 UsageRecord usageRecord = UsageRecord.createOnSubscriptionItem(
                                         subscriptionItem.getId(), usageRecordParams, usageRequestOptions);
 
                                 if (usageRecord.getId() != null) {
                                     counter++;
                                     if (log.isDebugEnabled()) {
-                                        String msg = "Usage for "+ apiName+ " by Application with ID " + applicationId +
+                                        String msg = "Usage for " + apiName + " by Application with ID " + applicationId +
                                                 "is successfully published to Stripe";
                                         log.info(msg);
                                     }
@@ -706,17 +705,17 @@ public class StripeMonetizationImpl implements Monetization {
             throw new MonetizationException(errorMessage, e);
         }
 
-        if(flag == counter){
+        if (flag == counter) {
             try {
                 lastPublishInfo.setStartedTime(currentTimestamp);
                 lastPublishInfo.setLastPublishTime(currentTimestamp);
                 lastPublishInfo.setState(StripeMonetizationConstants.COMPLETED);
                 lastPublishInfo.setStatus(StripeMonetizationConstants.SUCCESSFULL);
                 apiAdmin.updateMonetizationUsagePublishInfo(lastPublishInfo);
-            }catch (APIManagementException ex){
-                String msg= "Failed to update last published time ";
-                log.error(msg,ex);
-                throw new MonetizationException(msg,ex);
+            } catch (APIManagementException ex) {
+                String msg = "Failed to update last published time ";
+                log.error(msg, ex);
+                throw new MonetizationException(msg, ex);
             }
             return true;
         }
@@ -726,10 +725,10 @@ public class StripeMonetizationImpl implements Monetization {
             lastPublishInfo.setState(StripeMonetizationConstants.COMPLETED);
             lastPublishInfo.setStatus(StripeMonetizationConstants.UNSUCCESSFULL);
             apiAdmin.updateMonetizationUsagePublishInfo(lastPublishInfo);
-        }catch (APIManagementException ex){
-            String msg= "Failed to update last published time ";
-            log.error(msg,ex);
-            throw new MonetizationException(msg,ex);
+        } catch (APIManagementException ex) {
+            String msg = "Failed to update last published time ";
+            log.error(msg, ex);
+            throw new MonetizationException(msg, ex);
         }
         return false;
     }
@@ -1024,7 +1023,8 @@ public class StripeMonetizationImpl implements Monetization {
      * @param date
      * @return Timestamp in long format
      */
-    private long getTimestamp(String date){
+    private long getTimestamp(String date) {
+
         SimpleDateFormat formatter = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         long time = 0;

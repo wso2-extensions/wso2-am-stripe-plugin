@@ -4,6 +4,10 @@ public class MonetizationSharedCustomer {
 
     private int id;
     private int applicationId;
+    private String apiProvider;
+    private int tenantId;
+    private String sharedCustomerId;
+    private int parentCustomerId;
 
     public String getApiProvider() {
 
@@ -14,9 +18,6 @@ public class MonetizationSharedCustomer {
 
         this.apiProvider = apiProvider;
     }
-
-    private String apiProvider;
-    private int tenantId;
 
     public int getId() {
 
@@ -67,8 +68,5 @@ public class MonetizationSharedCustomer {
 
         this.parentCustomerId = parentCustomerId;
     }
-
-    private String sharedCustomerId;
-    private int parentCustomerId;
 
 }

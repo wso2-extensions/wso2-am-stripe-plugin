@@ -158,7 +158,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             }
             //creating Subscriptions
             int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), null);
-            String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId,subWorkFlowDTO.getTierName());
+            String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
             createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO);
         } catch (APIManagementException e) {
             throw new WorkflowException("Could not complete subscription creation workflow", e);
@@ -351,7 +351,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
 
         try {
             Map<String, Object> customerParams = new HashMap<String, Object>();
-            if (!subscriber.getEmail().equals("")) {
+            if (!StringUtils.isEmpty(subscriber.getEmail())) {
                 customerParams.put(StripeMonetizationConstants.CUSTOMER_EMAIL, subscriber.getEmail());
             }
             customerParams.put(StripeMonetizationConstants.CUSTOMER_DESCRIPTION, "Customer for "
