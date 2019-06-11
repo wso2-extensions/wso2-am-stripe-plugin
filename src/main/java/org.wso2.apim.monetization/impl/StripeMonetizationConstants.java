@@ -28,6 +28,7 @@ public class StripeMonetizationConstants {
             "WHERE POLICY_UUID = ?";
     public static final String GET_BILLING_PLAN_ID = "SELECT PLAN_ID FROM AM_POLICY_PLAN_MAPPING " +
             "WHERE POLICY_UUID = ?";
+    public static final String GET_SUBSCRIPTION_UUID = "SELECT UUID FROM AM_SUBSCRIPTION WHERE SUBSCRIPTION_ID = ?";
 
     public static final String TYPE = "type";
     public static final String SERVICE_TYPE = "service";

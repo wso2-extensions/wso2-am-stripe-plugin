@@ -355,6 +355,38 @@ public class StripeMonetizationDAO {
     }
 
     /**
+     * Get subscription UUID given the subscription ID
+     *
+     * @param subscriptionId subscription ID
+     * @return subscription UUID
+     * @throws StripeMonetizationException if failed to get subscription UUID given the subscription ID
+     */
+    public String getSubscriptionUUID(int subscriptionId) throws StripeMonetizationException {
+
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        String planId = null;
+        try {
+            conn = APIMgtDBUtil.getConnection();
+            conn.setAutoCommit(false);
+            ps = conn.prepareStatement(StripeMonetizationConstants.GET_SUBSCRIPTION_UUID);
+            ps.setInt(1, subscriptionId);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                planId = rs.getString("UUID");
+            }
+        } catch (SQLException e) {
+            String errorMessage = "Error while getting UUID of subscription ID : " + subscriptionId;
+            log.error(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
+        } finally {
+            APIMgtDBUtil.closeAllConnections(ps, conn, rs);
+        }
+        return planId;
+    }
+
+    /**
      * This method is used to get stripe plan and tier mapping
      *
      * @param apiID           API ID

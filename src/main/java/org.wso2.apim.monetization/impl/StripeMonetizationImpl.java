@@ -38,6 +38,7 @@ import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -84,22 +85,27 @@ public class StripeMonetizationImpl implements Monetization {
                 throw new MonetizationException(errorMessage);
             }
             Map<String, Object> planParams = new HashMap<String, Object>();
-            String currencyType = subscriptionPolicy.getMonetizationPlanProperties().get(APIConstants.CURRENCY);
+            String currencyType = subscriptionPolicy.getMonetizationPlanProperties().
+                    get(APIConstants.CURRENCY).toLowerCase();
             planParams.put(StripeMonetizationConstants.CURRENCY, currencyType);
             planParams.put(StripeMonetizationConstants.PRODUCT, productId);
             planParams.put(StripeMonetizationConstants.PRODUCT_NICKNAME, subscriptionPolicy.getPolicyName());
             planParams.put(StripeMonetizationConstants.INTERVAL,
                     subscriptionPolicy.getMonetizationPlanProperties().get(APIConstants.BILLING_CYCLE));
             if (APIConstants.FIXED_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
-                int amount = Integer.parseInt(subscriptionPolicy.getMonetizationPlanProperties().
+                float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
                         get(APIConstants.FIXED_PRICE));
-                planParams.put(StripeMonetizationConstants.AMOUNT, amount);
+                //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
+                //also, since stripe supports only integers, convert the amount to an int before creating the plan
+                planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
                 planParams.put(StripeMonetizationConstants.USAGE_TYPE, StripeMonetizationConstants.LICENSED_USAGE);
             }
             if (StripeMonetizationConstants.DYNAMIC_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
-                int amount = Integer.parseInt(subscriptionPolicy.getMonetizationPlanProperties().
+                float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
                         get(APIConstants.PRICE_PER_REQUEST));
-                planParams.put(StripeMonetizationConstants.AMOUNT, amount);
+                //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
+                //also, since stripe supports only integers, convert the amount to an int before creating the plan
+                planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
                 planParams.put(StripeMonetizationConstants.USAGE_TYPE, StripeMonetizationConstants.METERED_USAGE);
             }
             RequestOptions planRequestOptions = RequestOptions.builder().
@@ -204,7 +210,8 @@ public class StripeMonetizationImpl implements Monetization {
         //if updated to a commercial plan, create new plan in billing engine and update DB record
         if (APIConstants.COMMERCIAL_TIER_PLAN.equalsIgnoreCase(subscriptionPolicy.getBillingPlan())) {
             Map<String, Object> planParams = new HashMap<String, Object>();
-            String currencyType = subscriptionPolicy.getMonetizationPlanProperties().get(APIConstants.CURRENCY);
+            String currencyType = subscriptionPolicy.getMonetizationPlanProperties().
+                    get(APIConstants.CURRENCY).toLowerCase();
             planParams.put(StripeMonetizationConstants.CURRENCY, currencyType);
             if (StringUtils.isNotBlank(oldProductId)) {
                 planParams.put(StripeMonetizationConstants.PRODUCT, oldProductId);
@@ -217,15 +224,19 @@ public class StripeMonetizationImpl implements Monetization {
                     get(APIConstants.BILLING_CYCLE));
 
             if (APIConstants.FIXED_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
-                int amount = Integer.parseInt(subscriptionPolicy.getMonetizationPlanProperties().
+                float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
                         get(APIConstants.FIXED_PRICE));
-                planParams.put(StripeMonetizationConstants.AMOUNT, amount);
+                //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
+                //also, since stripe supports only integers, convert the amount to an int before creating the plan
+                planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
                 planParams.put(StripeMonetizationConstants.USAGE_TYPE, StripeMonetizationConstants.LICENSED_USAGE);
             }
             if (StripeMonetizationConstants.DYNAMIC_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
-                int amount = Integer.parseInt(subscriptionPolicy.getMonetizationPlanProperties().
+                float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
                         get(APIConstants.PRICE_PER_REQUEST));
-                planParams.put(StripeMonetizationConstants.AMOUNT, amount);
+                //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
+                //also, since stripe supports only integers, convert the amount to an int before creating the plan
+                planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
                 planParams.put(StripeMonetizationConstants.USAGE_TYPE, StripeMonetizationConstants.METERED_USAGE);
             }
             Plan updatedPlan = null;
@@ -697,18 +708,36 @@ public class StripeMonetizationImpl implements Monetization {
      * Get total revenue for a given API from all subscriptions
      *
      * @param api API
+     * @param apiProvider API provider
      * @return total revenue data for a given API from all subscriptions
      * @throws MonetizationException if failed to get total revenue data for a given API
      */
-    public Map<String, String> getTotalRevenue(API api) throws MonetizationException {
+    public Map<String, String> getTotalRevenue(API api, APIProvider apiProvider) throws MonetizationException {
 
-        //todo
-        //get all subscriptions for that API
-        //get subscription UUID for each subscription
-        //get revenue for each subscription and add them
-        //Note : This has to be implemented after "public Response subscriptionsGet" publisher REST API is done.
-        //for now, we are returning an empty map
-        return new HashMap<String, String>();
+        APIIdentifier apiIdentifier = api.getId();
+        Map<String, String> revenueData = new HashMap<String, String>();
+        try {
+            //get all subscriptions for the API
+            List<SubscribedAPI> apiUsages = apiProvider.getAPIUsageByAPIId(apiIdentifier);
+            for (SubscribedAPI subscribedAPI : apiUsages) {
+                //get subscription UUID for each subscription
+                int subscriptionId = subscribedAPI.getSubscriptionId();
+                String subscriptionUUID = stripeMonetizationDAO.getSubscriptionUUID(subscriptionId);
+                //get revenue for each subscription and add them
+                Map<String, String> billingEngineUsageData = getCurrentUsageForSubscription(subscriptionUUID, apiProvider);
+                revenueData.put("Revenue for subscription ID : " + subscriptionId,
+                        billingEngineUsageData.get("amount_due"));
+            }
+        } catch (APIManagementException e) {
+            String errorMessage = "Failed to get subscriptions of API : " + apiIdentifier.getApiName();
+            log.error(errorMessage);
+            throw new MonetizationException(errorMessage, e);
+        } catch (StripeMonetizationException e) {
+            String errorMessage = "Failed to get subscription UUID of API : " + apiIdentifier.getApiName();
+            log.error(errorMessage);
+            throw new MonetizationException(errorMessage, e);
+        }
+        return revenueData;
     }
 
     /**
