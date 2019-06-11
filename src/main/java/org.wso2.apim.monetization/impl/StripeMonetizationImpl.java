@@ -1029,7 +1029,7 @@ public class StripeMonetizationImpl implements Monetization {
             planParams.put(StripeMonetizationConstants.INTERVAL, billingPlan.getInterval());
             planParams.put(StripeMonetizationConstants.PRODUCT_NICKNAME, billingPlan.getNickname());
             planParams.put(StripeMonetizationConstants.PRODUCT, billingProductId);
-            planParams.put(APIConstants.CURRENCY, billingPlan.getCurrency());
+            planParams.put(StripeMonetizationConstants.CURRENCY, billingPlan.getCurrency());
             planParams.put(StripeMonetizationConstants.USAGE_TYPE, billingPlan.getUsageType());
             RequestOptions planRequestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
             //create a new stripe plan for the tier

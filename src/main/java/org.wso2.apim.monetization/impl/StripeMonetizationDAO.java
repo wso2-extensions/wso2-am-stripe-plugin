@@ -234,7 +234,7 @@ public class StripeMonetizationDAO {
             statement.setInt(1, apiId);
             ResultSet rs = statement.executeQuery();
             while (rs.next()) {
-                billingEngineProductId = rs.getString("PRODUCT_ID");
+                billingEngineProductId = rs.getString("STRIPE_PRODUCT_ID");
             }
             connection.commit();
         } catch (SQLException e) {
@@ -415,7 +415,7 @@ public class StripeMonetizationDAO {
             ResultSet rs = statement.executeQuery();
             while (rs.next()) {
                 String tierName = rs.getString("TIER_NAME");
-                String stripePlanId = rs.getString("PLAN_ID");
+                String stripePlanId = rs.getString("STRIPE_PLAN_ID");
                 stripePlanTierMap.put(tierName, stripePlanId);
             }
             connection.commit();
