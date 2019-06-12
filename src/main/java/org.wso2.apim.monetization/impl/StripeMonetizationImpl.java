@@ -63,12 +63,6 @@ public class StripeMonetizationImpl implements Monetization {
     private static final Log log = LogFactory.getLog(StripeMonetizationImpl.class);
     private StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
 
-    @Override
-    public Map<String, String> getCurrentUsage(String subscriptionUUID, APIProvider apiProvider)
-            throws MonetizationException {
-        return new HashMap<>();
-    }
-
     /**
      * Create billing plan for a policy
      *
