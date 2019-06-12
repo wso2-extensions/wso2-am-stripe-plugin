@@ -68,7 +68,7 @@ public class StripeMonetizationConstants {
                     " WHERE " +
                     " SUBSCRIBED_APPLICATION_ID=? AND SUBSCRIBED_API_ID=? AND TENANT_ID=?";
 
-    public static final String DELETE_BE_SUBSCRIPTION_SQL = "DELETE FROM MS_SUBSCRIPTIONS WHERE ID=?";
+    public static final String DELETE_BE_SUBSCRIPTION_SQL = "DELETE FROM AM_MONETIZATION_SUBSCRIPTIONS WHERE ID=?";
 
     public static final String TYPE = "type";
     public static final String SERVICE_TYPE = "service";
@@ -106,10 +106,15 @@ public class StripeMonetizationConstants {
     public static final String TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
     public static final String QUANTITY = "quantity";
     public static final String TIMESTAMP = "timestamp";
+    public static final String TIME_ZONE = "UTC";
     public static final String COMPLETED = "COMPLETED";
     public static final String RUNNING = "RUNNING";
     public static final String INPROGRESS = "INPROGRESS";
     public static final String SUCCESSFULL = "SUCCESSFULL";
     public static final String UNSUCCESSFULL = "UNSUCCESSFULL";
+    public static final String FILE_SEPERATOR = "/";
+    public static final String DEFAULT_TOKEN = "tok_visa";
+    public static final String INVOICE_NOW = "invoice_now";
+    public static final String CANCELED = "canceled";
 
 }

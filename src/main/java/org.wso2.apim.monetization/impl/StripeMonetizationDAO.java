@@ -268,7 +268,7 @@ public class StripeMonetizationDAO {
             statement.setString(2, tierName);
             ResultSet rs = statement.executeQuery();
             while (rs.next()) {
-                billingEnginePlanId = rs.getString("PLAN_ID");
+                billingEnginePlanId = rs.getString("STRIPE_PLAN_ID");
             }
             connection.commit();
         } catch (SQLException e) {
@@ -515,26 +515,22 @@ public class StripeMonetizationDAO {
         ResultSet rs = null;
         PreparedStatement ps = null;
         int id=0;
-
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-
             String query = StripeMonetizationConstants.ADD_BE_PLATFORM_CUSTOMER_SQL;
             ps = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-
             ps.setInt(1, subscriberId);
             ps.setInt(2, tenantId);
             ps.setString(3, customerId);
             id = ps.executeUpdate();
-
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) {
                 try {
                     conn.rollback();
-                } catch (SQLException e1) {
-                    log.error("Error while rolling back the failed operation", e1);
+                } catch (SQLException ex) {
+                    log.error("Error while rolling back the failed operation", ex);
                 }
             }
             String errorMessage = "Failed to add Stripe Platform Customer details for Subscriber : " + subscriberId;
@@ -558,28 +554,24 @@ public class StripeMonetizationDAO {
         ResultSet rs = null;
         PreparedStatement ps = null;
         int id=0;
-
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-
             String query = StripeMonetizationConstants.ADD_BE_SHARED_CUSTOMER_SQL;
             ps = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-
             ps.setInt(1, sharedCustomer.getApplicationId());
             ps.setString(2, sharedCustomer.getApiProvider());
             ps.setInt(3, sharedCustomer.getTenantId());
             ps.setString(4, sharedCustomer.getSharedCustomerId());
             ps.setInt(5, sharedCustomer.getParentCustomerId());
             id = ps.executeUpdate();
-
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) {
                 try {
                     conn.rollback();
-                } catch (SQLException e1) {
-                    log.error("Error while rolling back the failed operation", e1);
+                } catch (SQLException ex) {
+                    log.error("Error while rolling back the failed operation", ex);
                 }
             }
             String errorMessage = "Failed to add Billing Engine Shared Customer Info under Provider : "
@@ -609,7 +601,6 @@ public class StripeMonetizationDAO {
         ResultSet rs = null;
         PreparedStatement ps = null;
         int apiId;
-
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
@@ -622,21 +613,19 @@ public class StripeMonetizationDAO {
             }
             String query = StripeMonetizationConstants.ADD_BE_SUBSCRIPTION_SQL;
             ps = conn.prepareStatement(query);
-
             ps.setInt(1, apiId);
             ps.setInt(2, applicationId);
             ps.setInt(3, tenandId);
             ps.setInt(4, sharedCustomerId);
             ps.setString(5, subscriptionId);
             ps.executeUpdate();
-
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) {
                 try {
                     conn.rollback();
-                } catch (SQLException e1) {
-                    log.error("Error while rolling back the failed operation", e1);
+                } catch (SQLException ex) {
+                    log.error("Error while rolling back the failed operation", ex);
                 }
             }
             String errorMessage = "Failed to add Stripe Subscription Info for API : " + identifier.getApiName() + " and"
@@ -663,16 +652,13 @@ public class StripeMonetizationDAO {
         ResultSet result = null;
         String customerId = null;
         MonetizationPlatformCustomer monetizationPlatformCustomer = new MonetizationPlatformCustomer();
-
         String sqlQuery = StripeMonetizationConstants.GET_BE_PLATFORM_CUSTOMER_SQL;
-
         try {
             conn = APIMgtDBUtil.getConnection();
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, subscriberId);
             ps.setInt(2, tenantId);
             result = ps.executeQuery();
-
             if (result.next()) {
                 monetizationPlatformCustomer.setId(result.getInt("ID"));
                 monetizationPlatformCustomer.setCustomerId(result.getString("CUSTOMER_ID"));
@@ -703,8 +689,7 @@ public class StripeMonetizationDAO {
         PreparedStatement ps = null;
         ResultSet result = null;
         MonetizationSharedCustomer monetizationSharedCustomer = new MonetizationSharedCustomer();
-
-        String sqlQuery = StripeMonetizationConstants.ADD_BE_SHARED_CUSTOMER_SQL;
+        String sqlQuery = StripeMonetizationConstants.GET_BE_SHARED_CUSTOMER_SQL;
         try {
             conn = APIMgtDBUtil.getConnection();
             ps = conn.prepareStatement(sqlQuery);
@@ -712,13 +697,12 @@ public class StripeMonetizationDAO {
             ps.setString(2, apiProvider);
             ps.setInt(3, tenantId);
             result = ps.executeQuery();
-
             if (result.next()) {
                 monetizationSharedCustomer.setId(result.getInt("ID"));
                 monetizationSharedCustomer.setSharedCustomerId(result.getString("SHARED_CUSTOMER_ID"));
             }
         } catch (SQLException e) {
-            String errorMessage = "Failed to get Billing Engine Shared Customer details for application : " +
+            String errorMessage = "Failed to get Billing Engine Shared Customer details for application with ID : " +
                     applicationId;
             log.error(errorMessage);
             throw new StripeMonetizationException(errorMessage,e);
@@ -738,7 +722,6 @@ public class StripeMonetizationDAO {
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet result = null;
-
         String sqlQuery = StripeMonetizationConstants.DELETE_BE_SUBSCRIPTION_SQL;
         try {
             conn = APIMgtDBUtil.getConnection();
@@ -776,10 +759,8 @@ public class StripeMonetizationDAO {
         MonetizedSubscription monetizedSubscription = new MonetizedSubscription();
         int tenantId = APIUtil.getTenantIdFromTenantDomain(tenantDomain);
         APIIdentifier identifier = new APIIdentifier(apiProvider,apiName, apiVersion);
-
         String sqlQuery = StripeMonetizationConstants.GET_BE_SUBSCRIPTION_SQL;
         try {
-
             conn = APIMgtDBUtil.getConnection();
             try{
                 apiId = apiMgtDAO.getAPIID(identifier, conn);
@@ -788,13 +769,11 @@ public class StripeMonetizationDAO {
                 log.error(errorMessgae);
                 throw new StripeMonetizationException(errorMessgae,e);
             }
-
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, applicationId);
             ps.setInt(2, apiId);
             ps.setInt(3, tenantId);
             result = ps.executeQuery();
-
             if (result.next()) {
                 monetizedSubscription.setId(result.getInt("ID"));
                 monetizedSubscription.setSubscriptionId(result.getString("SUBSCRIPTION_ID"));
@@ -808,6 +787,4 @@ public class StripeMonetizationDAO {
         }
         return monetizedSubscription;
     }
-
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.wso2.apim.monetization.impl.StripeMonetizationConstants;
 import org.wso2.apim.monetization.impl.StripeMonetizationDAO;
 import org.wso2.apim.monetization.impl.StripeMonetizationException;
@@ -33,21 +35,27 @@ import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.WorkflowResponse;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
+import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO;
 import org.wso2.carbon.apimgt.impl.dto.WorkflowDTO;
+import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.workflow.GeneralWorkflowResponse;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowConstants;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowExecutor;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowStatus;
+import org.wso2.carbon.registry.core.Registry;
+import org.wso2.carbon.registry.core.Resource;
+import org.wso2.carbon.registry.core.exceptions.RegistryException;
 
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Simple workflow executor for subscription delete action
+ * worrkflow executor for stripe based subscription delete action
  */
 public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor {
 
@@ -80,20 +88,21 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
 
         SubscriptionWorkflowDTO subWorkflowDTO;
         MonetizedSubscription monetizedSubscription;
-        Stripe.apiKey = "sk_test_1Y8cd8EgnY1KYtBcs1vObHUF00020Je2H4";
-        ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
         StripeMonetizationDAO stripeMonetizationDAO = new StripeMonetizationDAO();
         subWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
-
+        //read the platform key of Stripe
+        Stripe.apiKey = getPlatformAccountKey(subWorkflowDTO.getTenantId());
         String connectedAccountKey = StringUtils.EMPTY;
         Map<String, String> monetizationProperties = new Gson().fromJson(api.getMonetizationProperties().toString(),
                 HashMap.class);
         if (MapUtils.isNotEmpty(monetizationProperties) &&
                 monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
+            // get the key of the connected account
             connectedAccountKey = monetizationProperties.get
                     (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
             if (StringUtils.isBlank(connectedAccountKey)) {
-                String errorMessage = "Connected account stripe key was not found for API : " + api.getId().getApiName();
+                String errorMessage = "Connected account stripe key was not found for API : "
+                        + api.getId().getApiName();
                 log.error(errorMessage);
                 throw new WorkflowException(errorMessage);
             }
@@ -102,46 +111,86 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
             log.error(errorMessage);
             throw new WorkflowException(errorMessage);
         }
-
+        //needed to add,remove artifacts in connected account
         RequestOptions requestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
         try {
+            //get the stripe subscription id
             monetizedSubscription = stripeMonetizationDAO.getMonetizedSubscription(subWorkflowDTO.getApiName(),
                     subWorkflowDTO.getApiVersion(), subWorkflowDTO.getApiProvider(), subWorkflowDTO.getApplicationId(),
                     subWorkflowDTO.getTenantDomain());
         } catch (StripeMonetizationException ex) {
-            throw new WorkflowException("Could not complete subscription deletion workflow", ex);
+            String errorMessage = "Could not retrieve monetized subscription info";
+            throw new WorkflowException(errorMessage, ex);
         }
-
         if (monetizedSubscription.getSubscriptionId() != null) {
             try {
                 Subscription subscription = Subscription.retrieve(monetizedSubscription.getSubscriptionId(),
                         requestOptions);
                 Map<String, Object> params = new HashMap<>();
-                params.put("invoice_now", true);
+                //canceled subscription will be invoiced immediately
+                params.put(StripeMonetizationConstants.INVOICE_NOW, true);
                 subscription = subscription.cancel(params, requestOptions);
-                if (subscription.getStatus().equals("canceled")) {
+                if (StringUtils.equals(subscription.getStatus(), StripeMonetizationConstants.CANCELED)) {
                     stripeMonetizationDAO.removeMonetizedSubscription(monetizedSubscription.getId());
                 }
                 if (log.isDebugEnabled()) {
-                    String msg = "Monetized Subscriprion for API : " + subWorkflowDTO.getApiName() + " by Application : "
+                    String msg = "Monetized Subscriprion for API : " + subWorkflowDTO.getApiName() + " by Application :"
                             + subWorkflowDTO.getApplicationName() + " is removed successfully ";
                     log.debug(msg);
                 }
             } catch (StripeException ex) {
-                String errorMessage = "Failed to remove Subcription in Billing Engine";
+                String errorMessage = "Failed to remove Subcription in Billing Engine " + subWorkflowDTO.getApiName();
                 log.error(errorMessage);
-                throw new WorkflowException("Could not complete subscription deletion workflow for "
-                        + subWorkflowDTO.getApiName(), ex);
+                throw new WorkflowException(errorMessage, ex);
             } catch (StripeMonetizationException ex) {
-                String errorMessage = "Failed to remove Subcription info from DB";
+                String errorMessage = "Failed to remove monetization Subcription info from DB";
                 log.error(errorMessage);
-                throw new WorkflowException("Could not complete subscription deletion workflow for "
-                        + subWorkflowDTO.getApiName(), ex);
+                throw new WorkflowException(errorMessage, ex);
             }
         }
-
-        return new GeneralWorkflowResponse();
+        return execute(workflowDTO);
     }
+
+    /**
+     * Returns the stripe key of the platform/tenant
+     *
+     * @param tenantId id of the tenant
+     * @return the stripe key of the platform/tenant
+     * @throws WorkflowException
+     */
+    private String getPlatformAccountKey(int tenantId) throws WorkflowException {
+
+        String stripePlatformAccountKey = null;
+        try {
+            Registry configRegistry = ServiceReferenceHolder.getInstance().getRegistryService().getConfigSystemRegistry(
+                    tenantId);
+            if (configRegistry.resourceExists(APIConstants.API_TENANT_CONF_LOCATION)) {
+                Resource resource = configRegistry.get(APIConstants.API_TENANT_CONF_LOCATION);
+                String content = new String((byte[]) resource.getContent(), Charset.defaultCharset());
+
+                if (StringUtils.isBlank(content)) {
+                    String errorMessage = "Tenant configuration cannot be empty when configuring monetization.";
+                    throw new WorkflowException(errorMessage);
+                }
+                //get the stripe key of patform account from tenant conf file
+                JSONObject tenantConfig = (JSONObject) new JSONParser().parse(content);
+                JSONObject monetizationInfo = (JSONObject) tenantConfig.get(
+                        StripeMonetizationConstants.MONETIZATION_INFO);
+                stripePlatformAccountKey = monetizationInfo.get(
+                        StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY).toString();
+
+                if (StringUtils.isBlank(stripePlatformAccountKey)) {
+                    throw new WorkflowException("stripePlatformAccountKey is empty!!!");
+                }
+            }
+        } catch (RegistryException ex) {
+            throw new WorkflowException("Could not get all registry objects : ", ex);
+        } catch (org.json.simple.parser.ParseException ex) {
+            throw new WorkflowException("Could not get Stripe Platform key : ", ex);
+        }
+        return stripePlatformAccountKey;
+    }
+
 
     @Override
     public WorkflowResponse complete(WorkflowDTO workflowDTO) throws WorkflowException {
