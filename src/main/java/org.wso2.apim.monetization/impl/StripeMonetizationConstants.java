@@ -30,6 +30,46 @@ public class StripeMonetizationConstants {
             "WHERE POLICY_UUID = ?";
     public static final String GET_SUBSCRIPTION_UUID = "SELECT UUID FROM AM_SUBSCRIPTION WHERE SUBSCRIPTION_ID = ?";
 
+    public static final String ADD_BE_PLATFORM_CUSTOMER_SQL =
+            " INSERT" +
+                    " INTO AM_MONETIZATION_PLATFORM_CUSTOMERS (SUBSCRIBER_ID, TENANT_ID, CUSTOMER_ID)" +
+                    " VALUES (?,?,?)";
+
+    public static final String ADD_BE_SHARED_CUSTOMER_SQL =
+            " INSERT" +
+                    " INTO AM_MONETIZATION_SHARED_CUSTOMERS (APPLICATION_ID,  API_PROVIDER," +
+                    " TENANT_ID, SHARED_CUSTOMER_ID, PARENT_CUSTOMER_ID)" +
+                    " VALUES (?,?,?,?,?)";
+
+    public static final String ADD_BE_SUBSCRIPTION_SQL =
+            " INSERT" +
+                    " INTO AM_MONETIZATION_SUBSCRIPTIONS (SUBSCRIBED_API_ID, SUBSCRIBED_APPLICATION_ID," +
+                    " TENANT_ID, SHARED_CUSTOMER_ID, SUBSCRIPTION_ID)" +
+                    " VALUES (?,?,?,?,?)";
+
+    public static final String GET_BE_PLATFORM_CUSTOMER_SQL =
+            "SELECT" +
+                    " ID, CUSTOMER_ID" +
+                    " FROM AM_MONETIZATION_PLATFORM_CUSTOMERS" +
+                    " WHERE" +
+                    " SUBSCRIBER_ID=? AND TENANT_ID=?";
+
+    public static final String GET_BE_SHARED_CUSTOMER_SQL =
+            " SELECT" +
+                    " ID, SHARED_CUSTOMER_ID" +
+                    " FROM AM_MONETIZATION_SHARED_CUSTOMERS" +
+                    " WHERE" +
+                    " APPLICATION_ID=? AND API_PROVIDER=? AND TENANT_ID=?";
+
+    public static final String GET_BE_SUBSCRIPTION_SQL =
+            " SELECT" +
+                    " ID, SUBSCRIPTION_ID" +
+                    " FROM AM_MONETIZATION_SUBSCRIPTIONS" +
+                    " WHERE" +
+                    " SUBSCRIBED_APPLICATION_ID=? AND SUBSCRIBED_API_ID=? AND TENANT_ID=?";
+
+    public static final String DELETE_BE_SUBSCRIPTION_SQL = "DELETE FROM AM_MONETIZATION_SUBSCRIPTIONS WHERE ID=?";
+
     public static final String TYPE = "type";
     public static final String SERVICE_TYPE = "service";
     public static final String CURRENCY = "currency";
@@ -54,5 +94,27 @@ public class StripeMonetizationConstants {
     public static final String MONETIZATION_INFO = "MonetizationInfo";
     public static final String BILLING_ENGINE_PLATFORM_ACCOUNT_KEY = "BillingEnginePlatformAccountKey";
     public static final String BILLING_ENGINE_CONNECTED_ACCOUNT_KEY = "ConnectedAccountKey";
+    public static final String CUSTOMER = "customer";
+    public static final String PLAN = "plan";
+    public static final String METERED_PLAN = "metered";
+    public static final String CUSTOMER_DESCRIPTION = "description";
+    public static final String CUSTOMER_EMAIL = "email";
+    public static final String CUSTOMER_SOURCE = "source";
+    public static final String ITEMS = "items";
+    public static final String ACTION = "action";
+    public static final String INCREMENT = "increment";
+    public static final String TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final String QUANTITY = "quantity";
+    public static final String TIMESTAMP = "timestamp";
+    public static final String TIME_ZONE = "UTC";
+    public static final String COMPLETED = "COMPLETED";
+    public static final String RUNNING = "RUNNING";
+    public static final String INPROGRESS = "INPROGRESS";
+    public static final String SUCCESSFULL = "SUCCESSFULL";
+    public static final String UNSUCCESSFULL = "UNSUCCESSFULL";
+    public static final String FILE_SEPERATOR = "/";
+    public static final String DEFAULT_TOKEN = "tok_visa";
+    public static final String INVOICE_NOW = "invoice_now";
+    public static final String CANCELED = "canceled";
 
 }
