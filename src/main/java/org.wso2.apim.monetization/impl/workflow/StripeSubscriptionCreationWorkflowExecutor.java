@@ -70,13 +70,11 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
 
     @Override
     public String getWorkflowType() {
-
         return WorkflowConstants.WF_TYPE_AM_SUBSCRIPTION_CREATION;
     }
 
     @Override
     public List<WorkflowDTO> getWorkflowDetails(String workflowStatus) throws WorkflowException {
-
         return null;
     }
 

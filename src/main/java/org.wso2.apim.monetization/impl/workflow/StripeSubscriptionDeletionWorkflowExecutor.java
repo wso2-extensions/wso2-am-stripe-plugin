@@ -63,13 +63,11 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
 
     @Override
     public String getWorkflowType() {
-
         return WorkflowConstants.WF_TYPE_AM_SUBSCRIPTION_DELETION;
     }
 
     @Override
     public List<WorkflowDTO> getWorkflowDetails(String workflowStatus) throws WorkflowException {
-
         // implemetation is not provided in this version
         return null;
     }
