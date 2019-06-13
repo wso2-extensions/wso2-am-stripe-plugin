@@ -42,7 +42,7 @@
     </repositories>
 
     <properties>
-        <carbon.apimgt.version>6.4.211-SNAPSHOT</carbon.apimgt.version>
+        <carbon.apimgt.version>6.4.217-SNAPSHOT</carbon.apimgt.version>
         <stripe.version>9.8.0</stripe.version>
     </properties>
 
