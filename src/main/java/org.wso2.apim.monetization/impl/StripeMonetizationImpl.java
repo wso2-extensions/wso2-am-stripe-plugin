@@ -593,7 +593,6 @@ public class StripeMonetizationImpl implements Monetization {
         int applicationId;
         String apiProvider = null;
         Long requestCount = 0L;
-        String lastPublishedTimeStamp;
         Long currentTimestamp;
         int flag = 0;
         int counter = 0;
@@ -603,6 +602,7 @@ public class StripeMonetizationImpl implements Monetization {
 
         DateFormat df = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
         Date dateobj = new Date();
+        //get the time in UTC format
         df.setTimeZone(TimeZone.getTimeZone(StripeMonetizationConstants.TIME_ZONE));
         String currentDate = df.format(dateobj);
         currentTimestamp = getTimestamp(currentDate);
@@ -622,6 +622,7 @@ public class StripeMonetizationImpl implements Monetization {
                 JSONArray jArray = (JSONArray) jsonObj.get(APIUsageStatisticsClientConstants.RECORDS_DELIMITER);
                 for (Object record : jArray) {
                     JSONArray recordArray = (JSONArray) record;
+                    // should return the 6 paramters derived below
                     if (recordArray.size() == 6) {
                         apiName = (String) recordArray.get(0);
                         apiVersion = (String) recordArray.get(1);
@@ -629,6 +630,7 @@ public class StripeMonetizationImpl implements Monetization {
                         tenantDomain = (String) recordArray.get(3);
                         applicationId = Integer.parseInt((String) recordArray.get(4));
                         requestCount = (Long) recordArray.get(5);
+                        //get the billing engine subscription details
                         MonetizedSubscription subscription = stripeMonetizationDAO.getMonetizedSubscription(apiName,
                                 apiVersion, apiProvider, applicationId, tenantDomain);
                         if (subscription.getSubscriptionId() != null) {

@@ -80,10 +80,8 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         return null;
     }
 
-
-
     /**
-     * This method executes subscription creation simple workflow and return workflow response back to the caller
+     * This method executes subscription creation workflow and return workflow response back to the caller
      *
      * @param workflowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
      * @return workflow response back to the caller
@@ -98,13 +96,13 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         super.publishEvents(workflowDTO);
 
         return new GeneralWorkflowResponse();
-
     }
 
     /**
-     * This method executes all the subscriptions related to monetizationand return workflow response back to the caller
+     * This method executes monetization related functions in the subscription creation workflow
      *
      * @param workflowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
+     * @param api         API
      * @return workflow response back to the caller
      * @throws WorkflowException Thrown when the workflow execution was not fully performed
      */
@@ -126,7 +124,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
         String connectedAccountKey = StringUtils.EMPTY;
         Map<String, String> monetizationProperties = new Gson().fromJson(api.getMonetizationProperties().toString(),
-                 HashMap.class);
+                HashMap.class);
         if (MapUtils.isNotEmpty(monetizationProperties) &&
                 monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
             connectedAccountKey = monetizationProperties.get
@@ -166,13 +164,13 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
             createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO);
         } catch (APIManagementException e) {
-            String errorMessage = "Could not monetize subscription for API : " +subWorkFlowDTO.getApiName()
-                    + " By Application " +subWorkFlowDTO.getApplicationName();
+            String errorMessage = "Could not monetize subscription for API : " + subWorkFlowDTO.getApiName()
+                    + " by Application : " + subWorkFlowDTO.getApplicationName();
             log.error(errorMessage);
             throw new WorkflowException(errorMessage, e);
         } catch (StripeMonetizationException e) {
-            String errorMessage = "Could not monetize subscription for API : " +subWorkFlowDTO.getApiName()
-                    + " By Application " +subWorkFlowDTO.getApplicationName();
+            String errorMessage = "Could not monetize subscription for API : " + subWorkFlowDTO.getApiName()
+                    + " by Application " + subWorkFlowDTO.getApplicationName();
             log.error(errorMessage);
             throw new WorkflowException(errorMessage, e);
         }
@@ -220,15 +218,13 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     }
 
     /**
-     * The method creates a Shared Customer in Billing Engine
-     * <p>
-     * Returns the created org.wso2.carbon.apimgt.api.model.SharedCustomer
+     * The method creates a Shared Customer in billing engine
      *
      * @param email            Email of the subscriber
-     * @param platformCustomer Monetization customer created under tenant account
-     * @param requestOptions   object of com.stripe.net.RequestOptions;
-     * @param subWorkFlowDTO   object of org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO
-     * @return it will return a object of .org.wso2.carbon.apimgt.api.model.SharedCustomer
+     * @param platformCustomer Monetization customer details created under platform account
+     * @param requestOptions   contains credentials to make api requests on behalf of the connected account
+     * @param subWorkFlowDTO   The WorkflowDTO which contains workflow contextual information related to the workflow
+     * @return MonetizationSharedCustomer Object with the details of the created shared customer
      * @throws WorkflowException
      */
     public MonetizationSharedCustomer createSharedCustomer(String email, MonetizationPlatformCustomer platformCustomer,
@@ -250,6 +246,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             throw new WorkflowException(errorMsg, ex);
         }
         Map<String, Object> sharedCustomerParams = new HashMap<>();
+        //if the email id of subscriber is empty, a customer object in billing engine will be created without email id
         if (!StringUtils.isEmpty(email)) {
             sharedCustomerParams.put(StripeMonetizationConstants.CUSTOMER_EMAIL, email);
         }
@@ -265,24 +262,25 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
                 monetizationSharedCustomer.setTenantId(subWorkFlowDTO.getTenantId());
                 monetizationSharedCustomer.setSharedCustomerId(stripeCustomer.getId());
                 monetizationSharedCustomer.setParentCustomerId(platformCustomer.getId());
+                //returns the ID of the inserted record
                 int id = stripeMonetizationDAO.addBESharedCustomer(monetizationSharedCustomer);
                 monetizationSharedCustomer.setId(id);
             } catch (StripeMonetizationException ex) {
                 //deleting the created customer in stripe if it fails to create the DB record
                 stripeCustomer.delete(requestOptions);
-                String errorMsg = "Error when inserting stripe shared customer details of Application : "
+                String errorMsg = "Error when inserting Stripe shared customer details of Application : "
                         + subWorkFlowDTO.getApplicationName() + "to database";
                 log.error(errorMsg, ex);
                 throw new WorkflowException(errorMsg, ex);
             }
             if (log.isDebugEnabled()) {
-                String msg = "A Customer for application " + subWorkFlowDTO.getApplicationName()
+                String msg = "A customer for Application " + subWorkFlowDTO.getApplicationName()
                         + " is created under the " + subWorkFlowDTO.getApiProvider()
-                        + "'s Connected Account in STRIPE";
+                        + "'s connected account in Stripe";
                 log.debug(msg);
             }
         } catch (StripeException ex) {
-            String errorMsg = "Error while creating a shared customer in stripe for Application "
+            String errorMsg = "Error while creating a shared customer in Stripe for Application : "
                     + subWorkFlowDTO.getApplicationName();
             log.error(errorMsg);
             throw new WorkflowException(errorMsg, ex);
@@ -294,11 +292,9 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
      * The method creates a subscription in Billing Engine
      *
      * @param planId         plan Id of the Stripe monetization plan
-     * @param sharedCustomer object of org.wso2.carbon.apimgt.api.model.StripeSharedCustomer contains info about
-     *                       the customer created in the provider account of Stripe
-     * @param requestOptions object of com.stripe.net.RequestOptions contains providers credential needed for Stripe
-     *                       transactions
-     * @param subWorkFlowDTO object of org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO
+     * @param sharedCustomer contains info about the customer created in the provider account of Stripe
+     * @param requestOptions contains connected account credential needed for Stripe transactions
+     * @param subWorkFlowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
      * @throws WorkflowException
      */
     public void createMonetizedSubscriptions(String planId, MonetizationSharedCustomer sharedCustomer,
@@ -308,7 +304,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
         APIIdentifier identifier = new APIIdentifier(subWorkFlowDTO.getApiProvider(), subWorkFlowDTO.getApiName(),
                 subWorkFlowDTO.getApiVersion());
-        Subscription subscription = new Subscription();
+        Subscription subscription = null;
         try {
             Map<String, Object> item = new HashMap<String, Object>();
             item.put(StripeMonetizationConstants.PLAN, planId);
@@ -322,7 +318,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
                 //create a subscritpion in stripe under the API Providers Connected Account
                 subscription = Subscription.create(subParams, requestOptions);
             } catch (StripeException ex) {
-                String errorMsg = "Error when adding a subscription in Stripe for Application " +
+                String errorMsg = "Error when adding a subscription in Stripe for Application : " +
                         subWorkFlowDTO.getApplicationName();
                 log.error(errorMsg);
                 throw new WorkflowException(errorMsg, ex);
@@ -339,12 +335,13 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
                 throw new WorkflowException(errorMsg, e);
             }
             if (log.isDebugEnabled()) {
-                String msg = "Stripe Subscription for " + subWorkFlowDTO.getApplicationName() + " is created for"
+                String msg = "Stripe subscription for " + subWorkFlowDTO.getApplicationName() + " is created for"
                         + subWorkFlowDTO.getApiName() + " API";
                 log.debug(msg);
             }
         } catch (StripeException ex) {
-            String errorMessage = "Failed to create subscription in Stripe";
+            String errorMessage = "Failed to create subscription in Stripe for API : " + subWorkFlowDTO.getApiName()
+                    + "by Application : " + subWorkFlowDTO.getApplicationName();
             log.error(errorMessage);
             throw new WorkflowException(errorMessage, ex);
         }
@@ -364,6 +361,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         Customer customer = null;
         try {
             Map<String, Object> customerParams = new HashMap<String, Object>();
+            //Customer object in billing engine will be created without the email id
             if (!StringUtils.isEmpty(subscriber.getEmail())) {
                 customerParams.put(StripeMonetizationConstants.CUSTOMER_EMAIL, subscriber.getEmail());
             }
@@ -374,6 +372,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             customer = Customer.create(customerParams);
             monetizationPlatformCustomer.setCustomerId(customer.getId());
             try {
+                //returns the id of the inserted record
                 int id = stripeMonetizationDAO.addBEPlatformCustomer(subscriber.getId(), subscriber.getTenantId(),
                         customer.getId());
                 monetizationPlatformCustomer.setId(id);
@@ -396,7 +395,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     }
 
     /**
-     * This method completes subscription creation simple workflow and return workflow response back to the caller
+     * This method completes subscription creation workflow and return workflow response back to the caller
      *
      * @param workflowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
      * @return workflow response back to the caller

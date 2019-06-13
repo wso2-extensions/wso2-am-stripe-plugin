@@ -501,20 +501,21 @@ public class StripeMonetizationDAO {
     }
 
     /**
-     * Add Billing Engine Platform Customer info
+     * Add billing engine platform customers info
      *
-     * @param subscriberId  Subscriber's Id
-     * @param tenantId Id of tenant
-     * @param customerId Id of the customer created in stripe
+     * @param subscriberId Subscriber's Id
+     * @param tenantId     Id of tenant
+     * @param customerId   Id of the customer created in stripe
      * @return Id of the customer record in the database
-     * @throws StripeMonetizationException If Failed To add Billing Engine Customer details
+     * @throws StripeMonetizationException If failed to add billing engine customer details
      */
     public int addBEPlatformCustomer(int subscriberId, int tenantId, String customerId) throws
             StripeMonetizationException {
+
         Connection conn = null;
         ResultSet rs = null;
         PreparedStatement ps = null;
-        int id=0;
+        int id = 0;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
@@ -533,9 +534,9 @@ public class StripeMonetizationDAO {
                     log.error("Error while rolling back the failed operation", ex);
                 }
             }
-            String errorMessage = "Failed to add Stripe Platform Customer details for Subscriber : " + subscriberId;
+            String errorMessage = "Failed to add Stripe platform customer details for Subscriber : " + subscriberId;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, rs);
         }
@@ -550,10 +551,11 @@ public class StripeMonetizationDAO {
      * @throws StripeMonetizationException If Failed To add Billing Engine Shared Customer details
      */
     public int addBESharedCustomer(MonetizationSharedCustomer sharedCustomer) throws StripeMonetizationException {
+
         Connection conn = null;
         ResultSet rs = null;
         PreparedStatement ps = null;
-        int id=0;
+        int id = 0;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
@@ -574,10 +576,11 @@ public class StripeMonetizationDAO {
                     log.error("Error while rolling back the failed operation", ex);
                 }
             }
-            String errorMessage = "Failed to add Billing Engine Shared Customer Info under Provider : "
-                    + sharedCustomer.getApiProvider() ;
+            String errorMessage = "Failed to add info of billing engine shared customer created"
+                    + " for Application with ID :" + sharedCustomer.getApplicationId()
+                    + " under Provider : " + sharedCustomer.getApiProvider();
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, rs);
         }
@@ -587,16 +590,17 @@ public class StripeMonetizationDAO {
     /**
      * Create Billing Engine Subscription Info
      *
-     * @param identifier API identifier
-     * @param applicationId Id of the Application
-     * @param tenandId Id of the tenant
+     * @param identifier       API identifier
+     * @param applicationId    Id of the Application
+     * @param tenandId         Id of the tenant
      * @param sharedCustomerId Id of the shared customer
-     * @param subscriptionId Id of the Billing Engine Subscriptions
+     * @param subscriptionId   Id of the Billing Engine Subscriptions
      * @return Id of the customer record in the database
      * @throws StripeMonetizationException If Failed To add Billing Engine Shared Customer details
      */
     public void addBESubscription(APIIdentifier identifier, int applicationId, int tenandId,
                                   int sharedCustomerId, String subscriptionId) throws StripeMonetizationException {
+
         Connection conn = null;
         ResultSet rs = null;
         PreparedStatement ps = null;
@@ -606,10 +610,10 @@ public class StripeMonetizationDAO {
             conn.setAutoCommit(false);
             try {
                 apiId = apiMgtDAO.getAPIID(identifier, conn);
-            }catch (APIManagementException e){
-                String errorMessage = "Failed to get teh ID of the API " + identifier.getApiName();
+            } catch (APIManagementException e) {
+                String errorMessage = "Failed to get the ID of the API " + identifier.getApiName();
                 log.error(errorMessage);
-                throw new StripeMonetizationException(errorMessage,e);
+                throw new StripeMonetizationException(errorMessage, e);
             }
             String query = StripeMonetizationConstants.ADD_BE_SUBSCRIPTION_SQL;
             ps = conn.prepareStatement(query);
@@ -628,10 +632,10 @@ public class StripeMonetizationDAO {
                     log.error("Error while rolling back the failed operation", ex);
                 }
             }
-            String errorMessage = "Failed to add Stripe Subscription Info for API : " + identifier.getApiName() + " and"
-                    + " Application : " +applicationId;
+            String errorMessage = "Failed to add Stripe subscription info for API : " + identifier.getApiName() + " by"
+                    + " Application : " + applicationId;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, rs);
         }
@@ -641,16 +645,16 @@ public class StripeMonetizationDAO {
      * Get Billing Engine Platform Customer Info
      *
      * @param subscriberId Id of the Subscriber
-     * @param tenantId Id of the tenant
+     * @param tenantId     Id of the tenant
      * @return MonetizationPlatformCustomer info of Billing Engine Platform Customer
      * @throws StripeMonetizationException If Failed To get Billing Engine Platform Customer details
      */
-    public MonetizationPlatformCustomer getPlatformCustomer(int subscriberId , int tenantId) throws
-            StripeMonetizationException{
+    public MonetizationPlatformCustomer getPlatformCustomer(int subscriberId, int tenantId) throws
+            StripeMonetizationException {
+
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet result = null;
-        String customerId = null;
         MonetizationPlatformCustomer monetizationPlatformCustomer = new MonetizationPlatformCustomer();
         String sqlQuery = StripeMonetizationConstants.GET_BE_PLATFORM_CUSTOMER_SQL;
         try {
@@ -664,10 +668,10 @@ public class StripeMonetizationDAO {
                 monetizationPlatformCustomer.setCustomerId(result.getString("CUSTOMER_ID"));
             }
         } catch (SQLException e) {
-            String errorMessage = "Failed to get Billing Engine Platform Customer details for Subscriber : " +
+            String errorMessage = "Failed to get billing engine platform customer details for Subscriber : " +
                     subscriberId;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, result);
         }
@@ -678,13 +682,14 @@ public class StripeMonetizationDAO {
      * Get Billing Engine Shared Customer Info
      *
      * @param applicationId Id of the Application
-     * @param apiProvider api provider
-     * @param tenantId Id of the tenant
+     * @param apiProvider   api provider
+     * @param tenantId      Id of the tenant
      * @return MonetizationPlatformCustomer info of Billing Engine Shared Customer
      * @throws StripeMonetizationException If Failed To get Billing Engine Platform Shared details
      */
     public MonetizationSharedCustomer getSharedCustomer(int applicationId, String apiProvider,
-                                                        int tenantId) throws StripeMonetizationException{
+                                                        int tenantId) throws StripeMonetizationException {
+
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet result = null;
@@ -702,10 +707,10 @@ public class StripeMonetizationDAO {
                 monetizationSharedCustomer.setSharedCustomerId(result.getString("SHARED_CUSTOMER_ID"));
             }
         } catch (SQLException e) {
-            String errorMessage = "Failed to get Billing Engine Shared Customer details for application with ID : " +
+            String errorMessage = "Failed to get billing Engine Shared Customer details for application with ID : " +
                     applicationId;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, result);
         }
@@ -713,12 +718,13 @@ public class StripeMonetizationDAO {
     }
 
     /**
-     * Remove Billing Engine Subscription Info
+     * Remove billing engine subscription info
      *
      * @param id Id of the Subscription Info
-     * @throws StripeMonetizationException If Failed To delete subscription details
+     * @throws StripeMonetizationException If failed to delete subscription details
      */
     public void removeMonetizedSubscription(int id) throws StripeMonetizationException {
+
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet result = null;
@@ -729,45 +735,45 @@ public class StripeMonetizationDAO {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            String errorMessage = "Failed to remove monetized subscription";
+            String errorMessage = "Failed to remove monetization info from DB of subscription with ID : " + id;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, result);
         }
     }
 
     /**
-     * Get Billing Engine Subscription Info
+     * Get billing engine Subscription info
      *
-     * @param apiName api name
-     * @param apiVersion api version
-     * @param apiProvider api provider
+     * @param apiName       api name
+     * @param apiVersion    api version
+     * @param apiProvider   api provider
      * @param applicationId Id of the Application
-     * @param tenantDomain tenant domain
+     * @param tenantDomain  tenant domain
      * @return MonetizationSubscription info of Billing Engine Subscription
      * @throws StripeMonetizationException If Failed To get Billing Engine Subscription details
      */
-    public MonetizedSubscription getMonetizedSubscription(String apiName, String apiVersion , String apiProvider,
-                                                          int applicationId, String tenantDomain )
-            throws StripeMonetizationException{
+    public MonetizedSubscription getMonetizedSubscription(String apiName, String apiVersion, String apiProvider,
+                                                          int applicationId, String tenantDomain)
+            throws StripeMonetizationException {
+
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet result = null;
-        String subscriptionId = null;
         int apiId;
         MonetizedSubscription monetizedSubscription = new MonetizedSubscription();
         int tenantId = APIUtil.getTenantIdFromTenantDomain(tenantDomain);
-        APIIdentifier identifier = new APIIdentifier(apiProvider,apiName, apiVersion);
+        APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
         String sqlQuery = StripeMonetizationConstants.GET_BE_SUBSCRIPTION_SQL;
         try {
             conn = APIMgtDBUtil.getConnection();
-            try{
+            try {
                 apiId = apiMgtDAO.getAPIID(identifier, conn);
-            }catch (APIManagementException e){
-                String errorMessgae = "failed to get ID for API : " +apiName;
+            } catch (APIManagementException e) {
+                String errorMessgae = "Failed to get ID for API : " + apiName;
                 log.error(errorMessgae);
-                throw new StripeMonetizationException(errorMessgae,e);
+                throw new StripeMonetizationException(errorMessgae, e);
             }
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, applicationId);
@@ -779,9 +785,9 @@ public class StripeMonetizationDAO {
                 monetizedSubscription.setSubscriptionId(result.getString("SUBSCRIPTION_ID"));
             }
         } catch (SQLException e) {
-            String errorMessage = "Failed to get Billing Engine Subscription Info";
+            String errorMessage = "Failed to get billing engine Subscription info for API : " + apiName;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage,e);
+            throw new StripeMonetizationException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, result);
         }

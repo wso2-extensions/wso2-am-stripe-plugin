@@ -32,40 +32,40 @@ public class StripeMonetizationConstants {
 
     public static final String ADD_BE_PLATFORM_CUSTOMER_SQL =
             " INSERT" +
-                    " INTO AM_MONETIZATION_PLATFORM_CUSTOMERS (SUBSCRIBER_ID , TENANT_ID, CUSTOMER_ID)" +
+                    " INTO AM_MONETIZATION_PLATFORM_CUSTOMERS (SUBSCRIBER_ID, TENANT_ID, CUSTOMER_ID)" +
                     " VALUES (?,?,?)";
 
     public static final String ADD_BE_SHARED_CUSTOMER_SQL =
             " INSERT" +
-                    " INTO AM_MONETIZATION_SHARED_CUSTOMERS (APPLICATION_ID,  API_PROVIDER, " +
+                    " INTO AM_MONETIZATION_SHARED_CUSTOMERS (APPLICATION_ID,  API_PROVIDER," +
                     " TENANT_ID, SHARED_CUSTOMER_ID, PARENT_CUSTOMER_ID)" +
                     " VALUES (?,?,?,?,?)";
 
     public static final String ADD_BE_SUBSCRIPTION_SQL =
             " INSERT" +
-                    " INTO AM_MONETIZATION_SUBSCRIPTIONS (SUBSCRIBED_API_ID, SUBSCRIBED_APPLICATION_ID, " +
+                    " INTO AM_MONETIZATION_SUBSCRIPTIONS (SUBSCRIBED_API_ID, SUBSCRIBED_APPLICATION_ID," +
                     " TENANT_ID, SHARED_CUSTOMER_ID, SUBSCRIPTION_ID)" +
                     " VALUES (?,?,?,?,?)";
 
-    public static final  String GET_BE_PLATFORM_CUSTOMER_SQL=
-            " SELECT " +
+    public static final String GET_BE_PLATFORM_CUSTOMER_SQL =
+            "SELECT" +
                     " ID, CUSTOMER_ID" +
                     " FROM AM_MONETIZATION_PLATFORM_CUSTOMERS" +
-                    " WHERE " +
+                    " WHERE" +
                     " SUBSCRIBER_ID=? AND TENANT_ID=?";
 
-    public static final  String GET_BE_SHARED_CUSTOMER_SQL=
-            " SELECT " +
+    public static final String GET_BE_SHARED_CUSTOMER_SQL =
+            " SELECT" +
                     " ID, SHARED_CUSTOMER_ID" +
                     " FROM AM_MONETIZATION_SHARED_CUSTOMERS" +
-                    " WHERE " +
+                    " WHERE" +
                     " APPLICATION_ID=? AND API_PROVIDER=? AND TENANT_ID=?";
 
-    public static final  String GET_BE_SUBSCRIPTION_SQL=
-            " SELECT " +
+    public static final String GET_BE_SUBSCRIPTION_SQL =
+            " SELECT" +
                     " ID, SUBSCRIPTION_ID" +
                     " FROM AM_MONETIZATION_SUBSCRIPTIONS" +
-                    " WHERE " +
+                    " WHERE" +
                     " SUBSCRIBED_APPLICATION_ID=? AND SUBSCRIBED_API_ID=? AND TENANT_ID=?";
 
     public static final String DELETE_BE_SUBSCRIPTION_SQL = "DELETE FROM AM_MONETIZATION_SUBSCRIPTIONS WHERE ID=?";

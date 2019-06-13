@@ -31,62 +31,50 @@ public class MonetizationSharedCustomer {
     private int parentCustomerId;
 
     public String getApiProvider() {
-
         return apiProvider;
     }
 
     public void setApiProvider(String apiProvider) {
-
         this.apiProvider = apiProvider;
     }
 
     public int getId() {
-
         return id;
     }
 
     public void setId(int id) {
-
         this.id = id;
     }
 
     public int getApplicationId() {
-
         return applicationId;
     }
 
     public void setApplicationId(int applicationId) {
-
         this.applicationId = applicationId;
     }
 
     public int getTenantId() {
-
         return tenantId;
     }
 
     public void setTenantId(int tenantId) {
-
         this.tenantId = tenantId;
     }
 
     public String getSharedCustomerId() {
-
         return sharedCustomerId;
     }
 
     public void setSharedCustomerId(String sharedCustomerId) {
-
         this.sharedCustomerId = sharedCustomerId;
     }
 
     public int getParentCustomerId() {
-
         return parentCustomerId;
     }
 
     public void setParentCustomerId(int parentCustomerId) {
-
         this.parentCustomerId = parentCustomerId;
     }
 }
