@@ -29,6 +29,11 @@
             <artifactId>stripe-java</artifactId>
             <version>${stripe.version}</version>
         </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>${commons.lang.version}</version>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>
@@ -42,7 +47,8 @@
     </repositories>
 
     <properties>
-        <carbon.apimgt.version>6.4.217-SNAPSHOT</carbon.apimgt.version>
+        <carbon.apimgt.version>6.5.32-SNAPSHOT</carbon.apimgt.version>
+        <commons.lang.version>2.6</commons.lang.version>
         <stripe.version>9.8.0</stripe.version>
     </properties>
 
