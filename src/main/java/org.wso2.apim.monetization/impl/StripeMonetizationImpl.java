@@ -55,6 +55,7 @@ import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.usage.client.APIUsageStatisticsClientConstants;
 import org.wso2.carbon.apimgt.usage.client.exception.APIMgtUsageQueryServiceClientException;
 import org.wso2.carbon.apimgt.usage.client.impl.APIUsageStatisticsRestClientImpl;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
@@ -612,7 +613,6 @@ public class StripeMonetizationImpl implements Monetization {
         Long currentTimestamp;
         int flag = 0;
         int counter = 0;
-        MonetizationUsagePublishInfo monetizationUsagePublishInfo = new MonetizationUsagePublishInfo();
         JSONObject jsonObj = null;
         APIAdmin apiAdmin = new APIAdminImpl();
 
@@ -624,8 +624,9 @@ public class StripeMonetizationImpl implements Monetization {
         currentTimestamp = getTimestamp(currentDate);
         try {
             APIUsageStatisticsRestClientImpl apiUsageStatisticsRestClient = new APIUsageStatisticsRestClientImpl();
-            jsonObj = apiUsageStatisticsRestClient.getUsageCountForMonetization(
-                    monetizationUsagePublishInfo.getLastPublishTime(), currentTimestamp);
+            //get the data from SP rest queries as a json object
+            jsonObj = apiUsageStatisticsRestClient.getUsageCountForMonetization(lastPublishInfo.getLastPublishTime(),
+                    currentTimestamp);
         } catch (APIMgtUsageQueryServiceClientException e) {
             String errorMessage = "Failed to get the API Usage count for Monetization";
             log.error(errorMessage);
@@ -651,6 +652,10 @@ public class StripeMonetizationImpl implements Monetization {
                                 apiVersion, apiProvider, applicationId, tenantDomain);
                         if (subscription.getSubscriptionId() != null) {
                             try {
+                                //start the tenant flow to get the platform key
+                                PrivilegedCarbonContext.startTenantFlow();
+                                PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
+                                        APIConstants.SUPER_TENANT_DOMAIN, true);
                                 //read tenant conf and get platform account key
                                 Stripe.apiKey = getStripePlatformAccountKey(tenantDomain);
                             } catch (StripeMonetizationException e) {
@@ -658,9 +663,14 @@ public class StripeMonetizationImpl implements Monetization {
                                         tenantDomain + " when disabling monetization for API : " + apiName;
                                 log.error(errorMessage);
                                 throw new MonetizationException(errorMessage, e);
+                            } finally {
+                                PrivilegedCarbonContext.endTenantFlow();
                             }
                             String connectedAccountKey;
                             try {
+                                PrivilegedCarbonContext.startTenantFlow();
+                                PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
+                                        tenantDomain, true);
                                 APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
                                 APIProvider apiProvider1 = APIManagerFactory.getInstance().getAPIProvider(apiProvider);
                                 API api = apiProvider1.getAPI(identifier);
@@ -689,6 +699,8 @@ public class StripeMonetizationImpl implements Monetization {
                                         + "the API : " + apiName;
                                 log.error(errorMessage);
                                 throw new MonetizationException(errorMessage, e);
+                            } finally {
+                                PrivilegedCarbonContext.endTenantFlow();
                             }
                             RequestOptions subRequestOptions = RequestOptions.builder().
                                     setStripeAccount(connectedAccountKey).build();
@@ -738,7 +750,6 @@ public class StripeMonetizationImpl implements Monetization {
         // Flag equals counter when all the records are published successfully
         if (flag == counter) {
             try {
-                lastPublishInfo.setStartedTime(currentTimestamp);
                 //last publish time will be updated only if all the records are successfull
                 lastPublishInfo.setLastPublishTime(currentTimestamp);
                 lastPublishInfo.setState(StripeMonetizationConstants.COMPLETED);
@@ -752,7 +763,6 @@ public class StripeMonetizationImpl implements Monetization {
             return true;
         }
         try {
-            lastPublishInfo.setStartedTime(currentTimestamp);
             lastPublishInfo.setState(StripeMonetizationConstants.COMPLETED);
             lastPublishInfo.setStatus(StripeMonetizationConstants.UNSUCCESSFULL);
             apiAdmin.updateMonetizationUsagePublishInfo(lastPublishInfo);
