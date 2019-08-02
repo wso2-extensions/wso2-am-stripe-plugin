@@ -450,7 +450,7 @@ public class StripeMonetizationImpl implements Monetization {
                 if (APIConstants.COMMERCIAL_TIER_PLAN.equalsIgnoreCase(currentTier.getTierPlan())) {
                     String billingPlanId = getBillingPlanIdOfTier(apiId, currentTier.getName());
                     if (StringUtils.isBlank(billingPlanId)) {
-                        int tenantId = APIUtil.getTenantId(apiProvider);
+                        int tenantId = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
                         String createdPlanId = createBillingPlanForCommercialTier(currentTier, tenantId,
                                 platformAccountKey, connectedAccountKey, billingProductIdForApi);
                         if (StringUtils.isNotBlank(createdPlanId)) {
