@@ -96,7 +96,7 @@ public class StripeMonetizationImpl implements Monetization {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     subscriptionPolicy.getTenantDomain();
             log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            throw new MonetizationException(errorMessage, e);
         }
         Map<String, Object> productParams = new HashMap<String, Object>();
         productParams.put(APIConstants.POLICY_NAME_ELEM, subscriptionPolicy.getTenantDomain() +
@@ -157,12 +157,12 @@ public class StripeMonetizationImpl implements Monetization {
             String errorMessage = "Failed to create monetization plan for : " + subscriptionPolicy.getPolicyName() +
                     " in stripe.";
             log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to create monetization plan for : " + subscriptionPolicy.getPolicyName() +
                     " in the database.";
             log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            throw new MonetizationException(errorMessage, e);
         }
     }
 
@@ -182,7 +182,7 @@ public class StripeMonetizationImpl implements Monetization {
             String errorMessage = "Failed to get stripe plan data for policy : " + subscriptionPolicy.getPolicyName() +
                     " when updating billing plan.";
             log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            throw new MonetizationException(errorMessage, e);
         }
         String oldProductId = null;
         String oldPlanId = null;
@@ -195,7 +195,7 @@ public class StripeMonetizationImpl implements Monetization {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     subscriptionPolicy.getTenantDomain() + " when updating billing plan.";
             log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            throw new MonetizationException(errorMessage, e);
         }
         if (MapUtils.isNotEmpty(planData)) {
             //product and plan exists for the older plan, so get those values and proceed
@@ -225,7 +225,7 @@ public class StripeMonetizationImpl implements Monetization {
                 String errorMessage = "Failed to create stripe product for tenant (when updating policy) : " +
                         subscriptionPolicy.getTenantDomain();
                 log.error(errorMessage);
-                throw new MonetizationException(errorMessage);
+                throw new MonetizationException(errorMessage, e);
             }
         }
         //delete old plan if exists
@@ -235,7 +235,7 @@ public class StripeMonetizationImpl implements Monetization {
             } catch (StripeException e) {
                 String errorMessage = "Failed to delete old plan for policy : " + subscriptionPolicy.getPolicyName();
                 log.error(errorMessage);
-                throw new MonetizationException(errorMessage);
+                throw new MonetizationException(errorMessage, e);
             }
         }
         //if updated to a commercial plan, create new plan in billing engine and update DB record
@@ -276,7 +276,7 @@ public class StripeMonetizationImpl implements Monetization {
             } catch (StripeException e) {
                 String errorMessage = "Failed to create stripe plan for tier : " + subscriptionPolicy.getPolicyName();
                 log.error(errorMessage);
-                throw new MonetizationException(errorMessage);
+                throw new MonetizationException(errorMessage, e);
             }
             if (updatedPlan != null) {
                 updatedPlanId = updatedPlan.getId();
@@ -919,7 +919,7 @@ public class StripeMonetizationImpl implements Monetization {
     /**
      * Get total revenue for a given API from all subscriptions
      *
-     * @param api API
+     * @param api         API
      * @param apiProvider API provider
      * @return total revenue data for a given API from all subscriptions
      * @throws MonetizationException if failed to get total revenue data for a given API
@@ -988,15 +988,15 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (ParseException e) {
             String errorMessage = "Error while parsing tenant configuration in tenant : " + tenantDomain;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         } catch (UserStoreException e) {
             String errorMessage = "Failed to get the corresponding tenant configurations for tenant :  " + tenantDomain;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         } catch (RegistryException e) {
             String errorMessage = "Failed to get the configuration registry for tenant :  " + tenantDomain;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         }
         return StringUtils.EMPTY;
     }
@@ -1068,11 +1068,11 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeException e) {
             String errorMessage = "Unable to create billing plan for : " + tier.getName();
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get UUID for tier :  " + tier.getName();
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         }
     }
 
