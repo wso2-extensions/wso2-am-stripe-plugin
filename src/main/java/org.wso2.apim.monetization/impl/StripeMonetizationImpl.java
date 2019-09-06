@@ -51,7 +51,6 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
-import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.usage.client.APIUsageStatisticsClientConstants;
 import org.wso2.carbon.apimgt.usage.client.exception.APIMgtUsageQueryServiceClientException;
 import org.wso2.carbon.apimgt.usage.client.impl.APIUsageStatisticsRestClientImpl;
@@ -95,8 +94,8 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     subscriptionPolicy.getTenantDomain();
-            log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
         }
         Map<String, Object> productParams = new HashMap<String, Object>();
         productParams.put(APIConstants.POLICY_NAME_ELEM, subscriptionPolicy.getTenantDomain() +
@@ -112,7 +111,7 @@ public class StripeMonetizationImpl implements Monetization {
             if (StringUtils.isBlank(productId)) {
                 String errorMessage = "Failed to create stripe product for tenant : " +
                         subscriptionPolicy.getTenantDomain();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
             Map<String, Object> planParams = new HashMap<String, Object>();
@@ -147,7 +146,7 @@ public class StripeMonetizationImpl implements Monetization {
             if (StringUtils.isBlank(createdPlanId)) {
                 String errorMessage = "Failed to create plan for tier : " + subscriptionPolicy.getPolicyName() +
                         " in " + subscriptionPolicy.getTenantDomain();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
             //add database record
@@ -156,13 +155,13 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeException e) {
             String errorMessage = "Failed to create monetization plan for : " + subscriptionPolicy.getPolicyName() +
                     " in stripe.";
-            log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to create monetization plan for : " + subscriptionPolicy.getPolicyName() +
                     " in the database.";
-            log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
         }
     }
 
@@ -181,8 +180,8 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get stripe plan data for policy : " + subscriptionPolicy.getPolicyName() +
                     " when updating billing plan.";
-            log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
         }
         String oldProductId = null;
         String oldPlanId = null;
@@ -194,8 +193,8 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     subscriptionPolicy.getTenantDomain() + " when updating billing plan.";
-            log.error(errorMessage);
-            throw new MonetizationException(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
         }
         if (MapUtils.isNotEmpty(planData)) {
             //product and plan exists for the older plan, so get those values and proceed
@@ -218,14 +217,14 @@ public class StripeMonetizationImpl implements Monetization {
                 if (StringUtils.isBlank(newProductId)) {
                     String errorMessage = "No stripe product was created for tenant (when updating policy) : " +
                             subscriptionPolicy.getTenantDomain();
-                    log.error(errorMessage);
+                    //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
             } catch (StripeException e) {
                 String errorMessage = "Failed to create stripe product for tenant (when updating policy) : " +
                         subscriptionPolicy.getTenantDomain();
-                log.error(errorMessage);
-                throw new MonetizationException(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
+                throw new MonetizationException(errorMessage, e);
             }
         }
         //delete old plan if exists
@@ -234,8 +233,8 @@ public class StripeMonetizationImpl implements Monetization {
                 Plan.retrieve(oldPlanId).delete();
             } catch (StripeException e) {
                 String errorMessage = "Failed to delete old plan for policy : " + subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
-                throw new MonetizationException(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
+                throw new MonetizationException(errorMessage, e);
             }
         }
         //if updated to a commercial plan, create new plan in billing engine and update DB record
@@ -275,20 +274,20 @@ public class StripeMonetizationImpl implements Monetization {
                 updatedPlan = Plan.create(planParams);
             } catch (StripeException e) {
                 String errorMessage = "Failed to create stripe plan for tier : " + subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
-                throw new MonetizationException(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
+                throw new MonetizationException(errorMessage, e);
             }
             if (updatedPlan != null) {
                 updatedPlanId = updatedPlan.getId();
             } else {
                 String errorMessage = "Failed to create plan for policy update : " + subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
             if (StringUtils.isBlank(updatedPlanId)) {
                 String errorMessage = "Failed to update stripe plan for tier : " + subscriptionPolicy.getPolicyName() +
                         " in " + subscriptionPolicy.getTenantDomain();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
         } else if (APIConstants.BILLING_PLAN_FREE.equalsIgnoreCase(subscriptionPolicy.getBillingPlan())) {
@@ -302,12 +301,12 @@ public class StripeMonetizationImpl implements Monetization {
                 }
             } catch (StripeException e) {
                 String errorMessage = "Failed to delete old stripe product for : " + subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage, e);
             } catch (StripeMonetizationException e) {
                 String errorMessage = "Failed to delete monetization plan data from database for : " +
                         subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage, e);
             }
         }
@@ -323,7 +322,7 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to update monetization plan data in database for : " +
                     subscriptionPolicy.getPolicyName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         return true;
@@ -345,7 +344,7 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get stripe plan data for policy : " + subscriptionPolicy.getPolicyName() +
                     " when deleting billing plan.";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         if (MapUtils.isEmpty(planData)) {
@@ -360,7 +359,7 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     subscriptionPolicy.getTenantDomain() + " when deleting billing plan.";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         if (StringUtils.isNotBlank(planId)) {
@@ -370,12 +369,12 @@ public class StripeMonetizationImpl implements Monetization {
                 stripeMonetizationDAO.deleteMonetizationPlanData(subscriptionPolicy);
             } catch (StripeException e) {
                 String errorMessage = "Failed to delete billing plan resources of : " + subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage, e);
             } catch (StripeMonetizationException e) {
                 String errorMessage = "Failed to delete billing plan data from database of policy : " +
                         subscriptionPolicy.getPolicyName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage, e);
             }
         }
@@ -401,7 +400,7 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     tenantDomain + " when enabling monetization for API : " + api.getId().getApiName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         String connectedAccountKey;
@@ -412,12 +411,12 @@ public class StripeMonetizationImpl implements Monetization {
                     (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
             if (StringUtils.isBlank(connectedAccountKey)) {
                 String errorMessage = "Connected account stripe key was not found for API : " + api.getId().getApiName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
         } else {
             String errorMessage = "Stripe key of the connected account is empty.";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage);
         }
         String apiName = api.getId().getApiName();
@@ -440,7 +439,7 @@ public class StripeMonetizationImpl implements Monetization {
                     billingProductIdForApi = product.getId();
                 } catch (StripeException e) {
                     String errorMessage = "Unable to create product in billing engine for : " + apiName;
-                    log.error(errorMessage);
+                    //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage, e);
                 }
             }
@@ -471,11 +470,11 @@ public class StripeMonetizationImpl implements Monetization {
             }
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get API ID from database for : " + apiName;
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to create products and plans in stripe for : " + apiName;
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         return true;
@@ -499,7 +498,7 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                     tenantDomain + " when disabling monetization for API : " + api.getId().getApiName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         String connectedAccountKey = StringUtils.EMPTY;
@@ -511,12 +510,12 @@ public class StripeMonetizationImpl implements Monetization {
             if (StringUtils.isBlank(connectedAccountKey)) {
                 String errorMessage = "Billing engine connected account key was not found for API : " +
                         api.getId().getApiName();
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
         } else {
             String errorMessage = "Stripe key of the connected account is empty for tenant : " + tenantDomain;
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage);
         }
         try {
@@ -547,16 +546,16 @@ public class StripeMonetizationImpl implements Monetization {
             log.debug("Successfully deleted monetization database records for API : " + apiName);
         } catch (StripeException e) {
             String errorMessage = "Failed to delete products and plans in the billing engine.";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to fetch database records when disabling monetization for : " + api.getId().getApiName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get API ID from database for : " + api.getId().getApiName() +
                     " when disabling monetization.";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         return true;
@@ -584,12 +583,12 @@ public class StripeMonetizationImpl implements Monetization {
             return stripeMonetizationDAO.getTierToBillingEnginePlanMapping(apiId, billingProductIdForApi);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get tier to billing engine plan mapping for : " + api.getId().getApiName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get API ID from database for : " + api.getId().getApiName() +
                     " when getting tier to billing engine plan mapping.";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
     }
@@ -629,7 +628,7 @@ public class StripeMonetizationImpl implements Monetization {
                     currentTimestamp);
         } catch (APIMgtUsageQueryServiceClientException e) {
             String errorMessage = "Failed to get the API Usage count for Monetization";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         log.info("Usage record publisher is running");
@@ -661,7 +660,7 @@ public class StripeMonetizationImpl implements Monetization {
                             } catch (StripeMonetizationException e) {
                                 String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
                                         tenantDomain + " when disabling monetization for API : " + apiName;
-                                log.error(errorMessage);
+                                //throw MonetizationException as it will be logged and handled by the caller
                                 throw new MonetizationException(errorMessage, e);
                             } finally {
                                 PrivilegedCarbonContext.endTenantFlow();
@@ -686,18 +685,18 @@ public class StripeMonetizationImpl implements Monetization {
                                     if (StringUtils.isBlank(connectedAccountKey)) {
                                         String errorMessage = "Connected account stripe key was not found for API : "
                                                 + api.getId().getApiName();
-                                        log.error(errorMessage);
+                                        //throw MonetizationException as it will be logged and handled by the caller
                                         throw new MonetizationException(errorMessage);
                                     }
                                 } else {
                                     String errorMessage = "Stripe key of the connected account is empty.";
-                                    log.error(errorMessage);
+                                    //throw MonetizationException as it will be logged and handled by the caller
                                     throw new MonetizationException(errorMessage);
                                 }
                             } catch (APIManagementException e) {
                                 String errorMessage = "Failed to get the Stripe key of the connected account from "
                                         + "the API : " + apiName;
-                                log.error(errorMessage);
+                                //throw MonetizationException as it will be logged and handled by the caller
                                 throw new MonetizationException(errorMessage, e);
                             } finally {
                                 PrivilegedCarbonContext.endTenantFlow();
@@ -740,11 +739,11 @@ public class StripeMonetizationImpl implements Monetization {
             }
         } catch (StripeMonetizationException e) {
             String errorMessage = "Unable to Publish usage Record to Billing Engine";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeException e) {
             String errorMessage = "Unable to Publish usage Record";
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         // Flag equals counter when all the records are published successfully
@@ -757,7 +756,7 @@ public class StripeMonetizationImpl implements Monetization {
                 apiAdmin.updateMonetizationUsagePublishInfo(lastPublishInfo);
             } catch (APIManagementException ex) {
                 String msg = "Failed to update last published time ";
-                log.error(msg, ex);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(msg, ex);
             }
             return true;
@@ -768,7 +767,7 @@ public class StripeMonetizationImpl implements Monetization {
             apiAdmin.updateMonetizationUsagePublishInfo(lastPublishInfo);
         } catch (APIManagementException ex) {
             String msg = "Failed to update last published time ";
-            log.error(msg, ex);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(msg, ex);
         }
         return false;
@@ -794,13 +793,13 @@ public class StripeMonetizationImpl implements Monetization {
             apiName = apiIdentifier.getApiName();
             if (api.getMonetizationProperties() == null) {
                 String errorMessage = "Monetization properties are empty for API : " + apiName;
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
             HashMap monetizationDataMap = new Gson().fromJson(api.getMonetizationProperties().toString(), HashMap.class);
             if (MapUtils.isEmpty(monetizationDataMap)) {
                 String errorMessage = "Monetization data map is empty for API : " + apiName;
-                log.error(errorMessage);
+                //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
             String tenantDomain = MultitenantUtils.getTenantDomain(apiIdentifier.getProviderName());
@@ -811,7 +810,7 @@ public class StripeMonetizationImpl implements Monetization {
                         (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY).toString();
                 if (StringUtils.isBlank(connectedAccountKey)) {
                     String errorMessage = "Connected account stripe key was not found for API : " + apiName;
-                    log.error(errorMessage);
+                    //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
                 Stripe.apiKey = platformAccountKey;
@@ -823,14 +822,14 @@ public class StripeMonetizationImpl implements Monetization {
                 Subscription billingEngineSubscription = Subscription.retrieve(billingPlanSubscriptionId, requestOptions);
                 if (billingEngineSubscription == null) {
                     String errorMessage = "No billing engine subscription was found for API : " + apiName;
-                    log.error(errorMessage);
+                    //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
                 //upcoming invoice is only applicable for metered usage (i.e - dynamic usage)
                 if (!StripeMonetizationConstants.METERED_USAGE.equalsIgnoreCase
                         (billingEngineSubscription.getPlan().getUsageType())) {
                     String errorMessage = "Usage type should be set to 'metered' to get the pending bill.";
-                    log.error(errorMessage);
+                    //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
                 Map<String, Object> invoiceParams = new HashMap<String, Object>();
@@ -839,7 +838,7 @@ public class StripeMonetizationImpl implements Monetization {
                 Invoice invoice = Invoice.upcoming(invoiceParams, requestOptions);
                 if (invoice == null) {
                     String errorMessage = "No billing engine subscription was found for : " + apiName;
-                    log.error(errorMessage);
+                    //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
                 //the below parameters are billing engine specific
@@ -902,15 +901,15 @@ public class StripeMonetizationImpl implements Monetization {
             }
         } catch (StripeException e) {
             String errorMessage = "Error while fetching billing engine usage data for : " + apiName;
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get subscription details of : " + apiName;
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get billing engine data for subscription : " + subscriptionUUID;
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         return billingEngineUsageData;
@@ -919,7 +918,7 @@ public class StripeMonetizationImpl implements Monetization {
     /**
      * Get total revenue for a given API from all subscriptions
      *
-     * @param api API
+     * @param api         API
      * @param apiProvider API provider
      * @return total revenue data for a given API from all subscriptions
      * @throws MonetizationException if failed to get total revenue data for a given API
@@ -942,11 +941,11 @@ public class StripeMonetizationImpl implements Monetization {
             }
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get subscriptions of API : " + apiIdentifier.getApiName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get subscription UUID of API : " + apiIdentifier.getApiName();
-            log.error(errorMessage);
+            //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         return revenueData;
@@ -988,15 +987,15 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (ParseException e) {
             String errorMessage = "Error while parsing tenant configuration in tenant : " + tenantDomain;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         } catch (UserStoreException e) {
             String errorMessage = "Failed to get the corresponding tenant configurations for tenant :  " + tenantDomain;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         } catch (RegistryException e) {
             String errorMessage = "Failed to get the configuration registry for tenant :  " + tenantDomain;
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         }
         return StringUtils.EMPTY;
     }
@@ -1068,11 +1067,11 @@ public class StripeMonetizationImpl implements Monetization {
         } catch (StripeException e) {
             String errorMessage = "Unable to create billing plan for : " + tier.getName();
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get UUID for tier :  " + tier.getName();
             log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage);
+            throw new StripeMonetizationException(errorMessage, e);
         }
     }
 
