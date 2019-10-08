@@ -116,15 +116,15 @@ public class StripeMonetizationImpl implements Monetization {
             }
             Map<String, Object> planParams = new HashMap<String, Object>();
             String currencyType = subscriptionPolicy.getMonetizationPlanProperties().
-                    get(APIConstants.CURRENCY).toLowerCase();
+                    get(APIConstants.Monetization.CURRENCY).toLowerCase();
             planParams.put(StripeMonetizationConstants.CURRENCY, currencyType);
             planParams.put(StripeMonetizationConstants.PRODUCT, productId);
             planParams.put(StripeMonetizationConstants.PRODUCT_NICKNAME, subscriptionPolicy.getPolicyName());
             planParams.put(StripeMonetizationConstants.INTERVAL,
-                    subscriptionPolicy.getMonetizationPlanProperties().get(APIConstants.BILLING_CYCLE));
-            if (APIConstants.FIXED_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
+                    subscriptionPolicy.getMonetizationPlanProperties().get(APIConstants.Monetization.BILLING_CYCLE));
+            if (APIConstants.Monetization.FIXED_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
                 float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
-                        get(APIConstants.FIXED_PRICE));
+                        get(APIConstants.Monetization.FIXED_PRICE));
                 //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
                 //also, since stripe supports only integers, convert the amount to an int before creating the plan
                 planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
@@ -132,7 +132,7 @@ public class StripeMonetizationImpl implements Monetization {
             }
             if (StripeMonetizationConstants.DYNAMIC_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
                 float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
-                        get(APIConstants.PRICE_PER_REQUEST));
+                        get(APIConstants.Monetization.PRICE_PER_REQUEST));
                 //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
                 //also, since stripe supports only integers, convert the amount to an int before creating the plan
                 planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
@@ -241,7 +241,7 @@ public class StripeMonetizationImpl implements Monetization {
         if (APIConstants.COMMERCIAL_TIER_PLAN.equalsIgnoreCase(subscriptionPolicy.getBillingPlan())) {
             Map<String, Object> planParams = new HashMap<String, Object>();
             String currencyType = subscriptionPolicy.getMonetizationPlanProperties().
-                    get(APIConstants.CURRENCY).toLowerCase();
+                    get(APIConstants.Monetization.CURRENCY).toLowerCase();
             planParams.put(StripeMonetizationConstants.CURRENCY, currencyType);
             if (StringUtils.isNotBlank(oldProductId)) {
                 planParams.put(StripeMonetizationConstants.PRODUCT, oldProductId);
@@ -251,11 +251,11 @@ public class StripeMonetizationImpl implements Monetization {
             }
             planParams.put(StripeMonetizationConstants.PRODUCT_NICKNAME, subscriptionPolicy.getPolicyName());
             planParams.put(StripeMonetizationConstants.INTERVAL, subscriptionPolicy.getMonetizationPlanProperties().
-                    get(APIConstants.BILLING_CYCLE));
+                    get(APIConstants.Monetization.BILLING_CYCLE));
 
-            if (APIConstants.FIXED_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
+            if (APIConstants.Monetization.FIXED_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
                 float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
-                        get(APIConstants.FIXED_PRICE));
+                        get(APIConstants.Monetization.FIXED_PRICE));
                 //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
                 //also, since stripe supports only integers, convert the amount to an int before creating the plan
                 planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
@@ -263,7 +263,7 @@ public class StripeMonetizationImpl implements Monetization {
             }
             if (StripeMonetizationConstants.DYNAMIC_RATE.equalsIgnoreCase(subscriptionPolicy.getMonetizationPlan())) {
                 float amount = Float.parseFloat(subscriptionPolicy.getMonetizationPlanProperties().
-                        get(APIConstants.PRICE_PER_REQUEST));
+                        get(APIConstants.Monetization.PRICE_PER_REQUEST));
                 //need to multiply the input for "amount" by 100 for stripe (because it divides the value by 100)
                 //also, since stripe supports only integers, convert the amount to an int before creating the plan
                 planParams.put(StripeMonetizationConstants.AMOUNT, (int) (amount * 100));
