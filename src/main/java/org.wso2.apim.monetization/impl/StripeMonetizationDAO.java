@@ -540,7 +540,16 @@ public class StripeMonetizationDAO {
             ps.setInt(1, subscriberId);
             ps.setInt(2, tenantId);
             ps.setString(3, customerId);
-            id = ps.executeUpdate();
+            ps.executeUpdate();
+            ResultSet set = ps.getGeneratedKeys();
+            if (set.next()) {
+                id = set.getInt(1);
+            } else {
+                String errorMessage = "Failed to get ID of the monetized subscription. Subscriber ID : " +
+                        subscriberId + " , tenant ID : " + tenantId + " , customer ID : " + customerId;
+                log.error(errorMessage);
+                throw new StripeMonetizationException(errorMessage);
+            }
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) {
@@ -582,7 +591,17 @@ public class StripeMonetizationDAO {
             ps.setInt(3, sharedCustomer.getTenantId());
             ps.setString(4, sharedCustomer.getSharedCustomerId());
             ps.setInt(5, sharedCustomer.getParentCustomerId());
-            id = ps.executeUpdate();
+            ps.executeUpdate();
+            ResultSet set = ps.getGeneratedKeys();
+            if (set.next()) {
+                id = set.getInt(1);
+            } else {
+                String errorMessage = "Failed to set ID of the shared customer : " + sharedCustomer.getId() +
+                        " , tenant ID : " + sharedCustomer.getTenantId() + " , application ID : " +
+                        sharedCustomer.getApplicationId();
+                log.error(errorMessage);
+                throw new StripeMonetizationException(errorMessage);
+            }
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) {
