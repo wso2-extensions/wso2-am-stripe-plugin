@@ -547,7 +547,6 @@ public class StripeMonetizationDAO {
             } else {
                 String errorMessage = "Failed to get ID of the monetized subscription. Subscriber ID : " +
                         subscriberId + " , tenant ID : " + tenantId + " , customer ID : " + customerId;
-                log.error(errorMessage);
                 throw new StripeMonetizationException(errorMessage);
             }
             conn.commit();
@@ -599,7 +598,6 @@ public class StripeMonetizationDAO {
                 String errorMessage = "Failed to set ID of the shared customer : " + sharedCustomer.getId() +
                         " , tenant ID : " + sharedCustomer.getTenantId() + " , application ID : " +
                         sharedCustomer.getApplicationId();
-                log.error(errorMessage);
                 throw new StripeMonetizationException(errorMessage);
             }
             conn.commit();

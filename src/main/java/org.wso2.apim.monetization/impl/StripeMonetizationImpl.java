@@ -653,8 +653,8 @@ public class StripeMonetizationImpl implements Monetization {
                             try {
                                 //start the tenant flow to get the platform key
                                 PrivilegedCarbonContext.startTenantFlow();
-                                PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
-                                        APIConstants.SUPER_TENANT_DOMAIN, true);
+                                PrivilegedCarbonContext.getThreadLocalCarbonContext().
+                                        setTenantDomain(tenantDomain, true);
                                 //read tenant conf and get platform account key
                                 Stripe.apiKey = getStripePlatformAccountKey(tenantDomain);
                             } catch (StripeMonetizationException e) {
@@ -802,7 +802,7 @@ public class StripeMonetizationImpl implements Monetization {
                 //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
-            String tenantDomain = MultitenantUtils.getTenantDomain(apiIdentifier.getProviderName());
+            String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
             //get billing engine platform account key
             String platformAccountKey = getStripePlatformAccountKey(tenantDomain);
             if (monetizationDataMap.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
@@ -842,61 +842,61 @@ public class StripeMonetizationImpl implements Monetization {
                     throw new MonetizationException(errorMessage);
                 }
                 //the below parameters are billing engine specific
-                billingEngineUsageData.put("invoice_id", invoice.getId());
+                billingEngineUsageData.put("Invoice ID", invoice.getId());
                 billingEngineUsageData.put("object", "invoice");
-                billingEngineUsageData.put("account_country", invoice.getAccountCountry());
-                billingEngineUsageData.put("account_name", invoice.getAccountName());
-                billingEngineUsageData.put("amount_due", invoice.getAmountDue() != null ?
+                billingEngineUsageData.put("Account Country", invoice.getAccountCountry());
+                billingEngineUsageData.put("Account Name", invoice.getAccountName());
+                billingEngineUsageData.put("Amount Due", invoice.getAmountDue() != null ?
                         invoice.getAmountDue().toString() : null);
-                billingEngineUsageData.put("amount_paid", invoice.getAmountPaid() != null ?
+                billingEngineUsageData.put("Amount Paid", invoice.getAmountPaid() != null ?
                         invoice.getAmountPaid().toString() : null);
-                billingEngineUsageData.put("amount_remaining", invoice.getAmountRemaining() != null ?
+                billingEngineUsageData.put("Amount Remaining", invoice.getAmountRemaining() != null ?
                         invoice.getAmountRemaining().toString() : null);
-                billingEngineUsageData.put("application_fee_amount", invoice.getApplicationFeeAmount() != null ?
+                billingEngineUsageData.put("Application Fee Amount", invoice.getApplicationFeeAmount() != null ?
                         invoice.getApplicationFeeAmount().toString() : null);
-                billingEngineUsageData.put("attempt_count", invoice.getAttemptCount() != null ?
+                billingEngineUsageData.put("Attempt Count", invoice.getAttemptCount() != null ?
                         invoice.getAttemptCount().toString() : null);
-                billingEngineUsageData.put("attempted", invoice.getAttempted() != null ?
+                billingEngineUsageData.put("Attempted", invoice.getAttempted() != null ?
                         invoice.getAttempted().toString() : null);
-                billingEngineUsageData.put("billing", invoice.getBilling());
-                billingEngineUsageData.put("billing_reason", invoice.getBillingReason());
-                billingEngineUsageData.put("charge", invoice.getCharge());
-                billingEngineUsageData.put("created", invoice.getCreated() != null ? invoice.getCreated().toString() : null);
-                billingEngineUsageData.put("currency", invoice.getCurrency());
-                billingEngineUsageData.put("customer", invoice.getCustomer());
-                billingEngineUsageData.put("customer_address", invoice.getCustomerAddress() != null ?
+                billingEngineUsageData.put("Billing", invoice.getBilling());
+                billingEngineUsageData.put("Billing Reason", invoice.getBillingReason());
+                billingEngineUsageData.put("Charge", invoice.getCharge());
+                billingEngineUsageData.put("Created", invoice.getCreated() != null ? invoice.getCreated().toString() : null);
+                billingEngineUsageData.put("Currency", invoice.getCurrency());
+                billingEngineUsageData.put("Customer", invoice.getCustomer());
+                billingEngineUsageData.put("Customer Address", invoice.getCustomerAddress() != null ?
                         invoice.getCustomerAddress().toString() : null);
-                billingEngineUsageData.put("customer_email", invoice.getCustomerEmail());
-                billingEngineUsageData.put("customer_name", invoice.getCustomerName());
-                billingEngineUsageData.put("description", invoice.getDescription());
-                billingEngineUsageData.put("due_date", invoice.getDueDate() != null ?
+                billingEngineUsageData.put("Customer Email", invoice.getCustomerEmail());
+                billingEngineUsageData.put("Customer Name", invoice.getCustomerName());
+                billingEngineUsageData.put("Description", invoice.getDescription());
+                billingEngineUsageData.put("Due Date", invoice.getDueDate() != null ?
                         invoice.getDueDate().toString() : null);
-                billingEngineUsageData.put("ending_balance", invoice.getEndingBalance() != null ?
+                billingEngineUsageData.put("Ending Balance", invoice.getEndingBalance() != null ?
                         invoice.getEndingBalance().toString() : null);
-                billingEngineUsageData.put("livemode", invoice.getLivemode() != null ? invoice.getLivemode().toString() : null);
-                billingEngineUsageData.put("next_payment_attempt", invoice.getNextPaymentAttempt() != null ?
+                billingEngineUsageData.put("Livemode", invoice.getLivemode() != null ? invoice.getLivemode().toString() : null);
+                billingEngineUsageData.put("Next Payment Attempt", invoice.getNextPaymentAttempt() != null ?
                         invoice.getNextPaymentAttempt().toString() : null);
-                billingEngineUsageData.put("number", invoice.getNumber());
-                billingEngineUsageData.put("paid", invoice.getPaid() != null ? invoice.getPaid().toString() : null);
-                billingEngineUsageData.put("payment_intent", invoice.getPaymentIntent());
-                billingEngineUsageData.put("period_end", invoice.getPeriodEnd() != null ?
+                billingEngineUsageData.put("Number", invoice.getNumber());
+                billingEngineUsageData.put("Paid", invoice.getPaid() != null ? invoice.getPaid().toString() : null);
+                billingEngineUsageData.put("Payment Intent", invoice.getPaymentIntent());
+                billingEngineUsageData.put("Period End", invoice.getPeriodEnd() != null ?
                         invoice.getPeriodEnd().toString() : null);
-                billingEngineUsageData.put("period_start", invoice.getPeriodStart() != null ?
+                billingEngineUsageData.put("Period Start", invoice.getPeriodStart() != null ?
                         invoice.getPeriodStart().toString() : null);
-                billingEngineUsageData.put("post_payment_credit_notes_amount",
+                billingEngineUsageData.put("Post Payment Credit Notes Amount",
                         invoice.getPostPaymentCreditNotesAmount() != null ? invoice.getPostPaymentCreditNotesAmount().toString() : null);
-                billingEngineUsageData.put("pre_payment_credit_notes_amount",
+                billingEngineUsageData.put("Pre Payment Credit Notes Amount",
                         invoice.getPrePaymentCreditNotesAmount() != null ? invoice.getPrePaymentCreditNotesAmount().toString() : null);
-                billingEngineUsageData.put("receipt_number", invoice.getReceiptNumber());
-                billingEngineUsageData.put("subscription", invoice.getSubscription());
-                billingEngineUsageData.put("subtotal", invoice.getSubtotal() != null ?
+                billingEngineUsageData.put("Receipt Number", invoice.getReceiptNumber());
+                billingEngineUsageData.put("Subscription", invoice.getSubscription());
+                billingEngineUsageData.put("Subtotal", invoice.getSubtotal() != null ?
                         invoice.getSubtotal().toString() : null);
-                billingEngineUsageData.put("tax", invoice.getTax() != null ?
+                billingEngineUsageData.put("Tax", invoice.getTax() != null ?
                         invoice.getTax().toString() : null);
-                billingEngineUsageData.put("tax_percent", invoice.getTaxPercent() != null ?
+                billingEngineUsageData.put("Tax Percent", invoice.getTaxPercent() != null ?
                         invoice.getTaxPercent().toString() : null);
-                billingEngineUsageData.put("total", invoice.getTotal() != null ? invoice.getTotal().toString() : null);
-                billingEngineUsageData.put("total_tax_amounts", invoice.getTotalTaxAmounts() != null ?
+                billingEngineUsageData.put("Total", invoice.getTotal() != null ? invoice.getTotal().toString() : null);
+                billingEngineUsageData.put("Total Tax Amounts", invoice.getTotalTaxAmounts() != null ?
                         invoice.getTotalTaxAmounts().toString() : null);
             }
         } catch (StripeException e) {
