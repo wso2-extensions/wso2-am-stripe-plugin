@@ -841,17 +841,40 @@ public class StripeMonetizationImpl implements Monetization {
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
+                SimpleDateFormat dateFormatter = new SimpleDateFormat("EEEE, MMMM d");
                 //the below parameters are billing engine specific
+                billingEngineUsageData.put("Description", invoice.getDescription());
+                billingEngineUsageData.put("Paid", invoice.getPaid() != null ? invoice.getPaid().toString() : null);
+                billingEngineUsageData.put("Tax", invoice.getTax() != null ?
+                        invoice.getTax().toString() : null);
                 billingEngineUsageData.put("Invoice ID", invoice.getId());
-                billingEngineUsageData.put("object", "invoice");
-                billingEngineUsageData.put("Account Country", invoice.getAccountCountry());
                 billingEngineUsageData.put("Account Name", invoice.getAccountName());
-                billingEngineUsageData.put("Amount Due", invoice.getAmountDue() != null ?
-                        invoice.getAmountDue().toString() : null);
-                billingEngineUsageData.put("Amount Paid", invoice.getAmountPaid() != null ?
-                        invoice.getAmountPaid().toString() : null);
+                billingEngineUsageData.put("Next Payment Attempt", invoice.getNextPaymentAttempt() != null ?
+                        dateFormatter.format(new Date(invoice.getNextPaymentAttempt())) : null);
+                billingEngineUsageData.put("Customer Email", invoice.getCustomerEmail());
+                billingEngineUsageData.put("Currency", invoice.getCurrency());
+                billingEngineUsageData.put("Account Country", invoice.getAccountCountry());
                 billingEngineUsageData.put("Amount Remaining", invoice.getAmountRemaining() != null ?
-                        invoice.getAmountRemaining().toString() : null);
+                        Long.toString(invoice.getAmountRemaining() / 100L) : null);
+                billingEngineUsageData.put("Period End", invoice.getPeriodEnd() != null ?
+                        dateFormatter.format(new Date(invoice.getPeriodEnd())) : null);
+                billingEngineUsageData.put("Due Date", invoice.getDueDate() != null ?
+                        dateFormatter.format(new Date(invoice.getDueDate())) : null);
+                billingEngineUsageData.put("Amount Due", invoice.getAmountDue() != null ?
+                        Long.toString(invoice.getAmountDue() / 100L) : null);
+                billingEngineUsageData.put("Total Tax Amounts", invoice.getTotalTaxAmounts() != null ?
+                        invoice.getTotalTaxAmounts().toString() : null);
+                billingEngineUsageData.put("Amount Paid", invoice.getAmountPaid() != null ?
+                        Long.toString(invoice.getAmountPaid() / 100L) : null);
+                billingEngineUsageData.put("Subtotal", invoice.getSubtotal() != null ?
+                        Long.toString(invoice.getSubtotal() / 100L) : null);
+                billingEngineUsageData.put("Total", invoice.getTotal() != null ?
+                        Long.toString(invoice.getTotal() / 100L) : null);
+                billingEngineUsageData.put("Period Start", invoice.getPeriodStart() != null ?
+                        dateFormatter.format(new Date(invoice.getPeriodStart())) : null);
+
+                //the below parameters are also returned from stripe, but commented for simplicity of the invoice
+                /*billingEngineUsageData.put("object", "invoice");
                 billingEngineUsageData.put("Application Fee Amount", invoice.getApplicationFeeAmount() != null ?
                         invoice.getApplicationFeeAmount().toString() : null);
                 billingEngineUsageData.put("Attempt Count", invoice.getAttemptCount() != null ?
@@ -862,42 +885,23 @@ public class StripeMonetizationImpl implements Monetization {
                 billingEngineUsageData.put("Billing Reason", invoice.getBillingReason());
                 billingEngineUsageData.put("Charge", invoice.getCharge());
                 billingEngineUsageData.put("Created", invoice.getCreated() != null ? invoice.getCreated().toString() : null);
-                billingEngineUsageData.put("Currency", invoice.getCurrency());
                 billingEngineUsageData.put("Customer", invoice.getCustomer());
                 billingEngineUsageData.put("Customer Address", invoice.getCustomerAddress() != null ?
                         invoice.getCustomerAddress().toString() : null);
-                billingEngineUsageData.put("Customer Email", invoice.getCustomerEmail());
                 billingEngineUsageData.put("Customer Name", invoice.getCustomerName());
-                billingEngineUsageData.put("Description", invoice.getDescription());
-                billingEngineUsageData.put("Due Date", invoice.getDueDate() != null ?
-                        invoice.getDueDate().toString() : null);
                 billingEngineUsageData.put("Ending Balance", invoice.getEndingBalance() != null ?
                         invoice.getEndingBalance().toString() : null);
                 billingEngineUsageData.put("Livemode", invoice.getLivemode() != null ? invoice.getLivemode().toString() : null);
-                billingEngineUsageData.put("Next Payment Attempt", invoice.getNextPaymentAttempt() != null ?
-                        invoice.getNextPaymentAttempt().toString() : null);
                 billingEngineUsageData.put("Number", invoice.getNumber());
-                billingEngineUsageData.put("Paid", invoice.getPaid() != null ? invoice.getPaid().toString() : null);
                 billingEngineUsageData.put("Payment Intent", invoice.getPaymentIntent());
-                billingEngineUsageData.put("Period End", invoice.getPeriodEnd() != null ?
-                        invoice.getPeriodEnd().toString() : null);
-                billingEngineUsageData.put("Period Start", invoice.getPeriodStart() != null ?
-                        invoice.getPeriodStart().toString() : null);
                 billingEngineUsageData.put("Post Payment Credit Notes Amount",
                         invoice.getPostPaymentCreditNotesAmount() != null ? invoice.getPostPaymentCreditNotesAmount().toString() : null);
                 billingEngineUsageData.put("Pre Payment Credit Notes Amount",
                         invoice.getPrePaymentCreditNotesAmount() != null ? invoice.getPrePaymentCreditNotesAmount().toString() : null);
                 billingEngineUsageData.put("Receipt Number", invoice.getReceiptNumber());
                 billingEngineUsageData.put("Subscription", invoice.getSubscription());
-                billingEngineUsageData.put("Subtotal", invoice.getSubtotal() != null ?
-                        invoice.getSubtotal().toString() : null);
-                billingEngineUsageData.put("Tax", invoice.getTax() != null ?
-                        invoice.getTax().toString() : null);
                 billingEngineUsageData.put("Tax Percent", invoice.getTaxPercent() != null ?
-                        invoice.getTaxPercent().toString() : null);
-                billingEngineUsageData.put("Total", invoice.getTotal() != null ? invoice.getTotal().toString() : null);
-                billingEngineUsageData.put("Total Tax Amounts", invoice.getTotalTaxAmounts() != null ?
-                        invoice.getTotalTaxAmounts().toString() : null);
+                        invoice.getTaxPercent().toString() : null);*/
             }
         } catch (StripeException e) {
             String errorMessage = "Error while fetching billing engine usage data for : " + apiName;
