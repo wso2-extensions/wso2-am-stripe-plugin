@@ -51,6 +51,7 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.usage.client.APIUsageStatisticsClientConstants;
 import org.wso2.carbon.apimgt.usage.client.exception.APIMgtUsageQueryServiceClientException;
 import org.wso2.carbon.apimgt.usage.client.impl.APIUsageStatisticsRestClientImpl;
@@ -670,6 +671,7 @@ public class StripeMonetizationImpl implements Monetization {
                                 PrivilegedCarbonContext.startTenantFlow();
                                 PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
                                         tenantDomain, true);
+                                apiProvider = APIUtil.replaceEmailDomain(apiProvider);
                                 APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
                                 APIProvider apiProvider1 = APIManagerFactory.getInstance().getAPIProvider(apiProvider);
                                 API api = apiProvider1.getAPI(identifier);
