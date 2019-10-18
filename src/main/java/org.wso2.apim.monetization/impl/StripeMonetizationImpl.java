@@ -41,6 +41,7 @@ import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.MonetizationException;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
+import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.api.model.Monetization;
 import org.wso2.carbon.apimgt.api.model.MonetizationUsagePublishInfo;
 import org.wso2.carbon.apimgt.api.model.SubscribedAPI;
@@ -481,6 +482,96 @@ public class StripeMonetizationImpl implements Monetization {
         return true;
     }
 
+    @Override
+    public boolean enableMonetization(String tenantDomain, APIProduct apiProduct, Map<String, String> monetizationProperties)
+            throws MonetizationException {
+        String platformAccountKey = null;
+        try {
+            //read tenant conf and get platform account key
+            platformAccountKey = getStripePlatformAccountKey(tenantDomain);
+        } catch (StripeMonetizationException e) {
+            String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
+                    tenantDomain + " when enabling monetization for API : " + apiProduct.getId().getName();
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
+        }
+        String connectedAccountKey;
+        //get api publisher's stripe key (i.e - connected account key) from monetization properties in request payload
+        if (MapUtils.isNotEmpty(monetizationProperties) &&
+                monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
+            connectedAccountKey = monetizationProperties.get
+                    (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
+            if (StringUtils.isBlank(connectedAccountKey)) {
+                String errorMessage = "Connected account stripe key was not found for API : " + apiProduct.getId().getName();
+                //throw MonetizationException as it will be logged and handled by the caller
+                throw new MonetizationException(errorMessage);
+            }
+        } else {
+            String errorMessage = "Stripe key of the connected account is empty.";
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage);
+        }
+        String apiName = apiProduct.getId().getName();
+        String apiVersion = apiProduct.getId().getVersion();
+        String apiProvider = apiProduct.getId().getProviderName();
+        try {
+            int apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProduct.getId());
+            String billingProductIdForApi = getBillingProductIdForApi(apiId);
+            //create billing engine product if it does not exist
+            if (StringUtils.isEmpty(billingProductIdForApi)) {
+                Stripe.apiKey = platformAccountKey;
+                Map<String, Object> productParams = new HashMap<String, Object>();
+                String stripeProductName = apiName + "-" + apiVersion + "-" + apiProvider;
+                productParams.put(APIConstants.POLICY_NAME_ELEM, stripeProductName);
+                productParams.put(APIConstants.TYPE, StripeMonetizationConstants.SERVICE_TYPE);
+                RequestOptions productRequestOptions = RequestOptions.builder().setStripeAccount(
+                        connectedAccountKey).build();
+                try {
+                    Product product = Product.create(productParams, productRequestOptions);
+                    billingProductIdForApi = product.getId();
+                } catch (StripeException e) {
+                    String errorMessage = "Unable to create product in billing engine for : " + apiName;
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage, e);
+                }
+            }
+            Map<String, String> tierPlanMap = new HashMap<String, String>();
+            //scan for commercial tiers and add add plans in the billing engine if needed
+            for (Tier currentTier : apiProduct.getAvailableTiers()) {
+                if (APIConstants.COMMERCIAL_TIER_PLAN.equalsIgnoreCase(currentTier.getTierPlan())) {
+                    String billingPlanId = getBillingPlanIdOfTier(apiId, currentTier.getName());
+                    if (StringUtils.isBlank(billingPlanId)) {
+                        int tenantId = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
+                        String createdPlanId = createBillingPlanForCommercialTier(currentTier, tenantId,
+                                platformAccountKey, connectedAccountKey, billingProductIdForApi);
+                        if (StringUtils.isNotBlank(createdPlanId)) {
+                            log.debug("Billing plan : " + createdPlanId + " successfully created for : " +
+                                    currentTier.getName());
+                            tierPlanMap.put(currentTier.getName(), createdPlanId);
+                        } else {
+                            log.debug("Failed to create billing plan for : " + currentTier.getName());
+                        }
+                    }
+                }
+            }
+            //save data in the database - only if there is a stripe product and newly created plans
+            if (StringUtils.isNotBlank(billingProductIdForApi) && MapUtils.isNotEmpty(tierPlanMap)) {
+                stripeMonetizationDAO.addMonetizationData(apiId, billingProductIdForApi, tierPlanMap);
+            } else {
+                return false;
+            }
+        } catch (APIManagementException e) {
+            String errorMessage = "Failed to get API ID from database for : " + apiName;
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
+        } catch (StripeMonetizationException e) {
+            String errorMessage = "Failed to create products and plans in stripe for : " + apiName;
+            //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
+        }
+        return true;
+    }
+
     /**
      * Disable monetization for a API
      *
@@ -562,6 +653,12 @@ public class StripeMonetizationImpl implements Monetization {
         return true;
     }
 
+    @Override
+    public boolean disableMonetization(String s, APIProduct apiProduct, Map<String, String> map)
+            throws MonetizationException {
+        return false;
+    }
+
     /**
      * Get mapping of tiers and billing engine plans
      *
@@ -592,6 +689,11 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
+    }
+
+    @Override
+    public Map<String, String> getMonetizedPoliciesToPlanMapping(APIProduct apiProduct) throws MonetizationException {
+        return null;
     }
 
     /**
@@ -955,6 +1057,11 @@ public class StripeMonetizationImpl implements Monetization {
             throw new MonetizationException(errorMessage, e);
         }
         return revenueData;
+    }
+
+    @Override
+    public Map<String, String> getTotalRevenue(APIProduct apiProduct, APIProvider apiProvider) throws MonetizationException {
+        return null;
     }
 
     /**
