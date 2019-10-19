@@ -40,6 +40,7 @@ import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.WorkflowResponse;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
+import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.api.model.Subscriber;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
@@ -175,6 +176,17 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         return execute(workflowDTO);
     }
 
+    @Override
+    public WorkflowResponse monetizeSubscription(WorkflowDTO workflowDTO, APIProduct apiProduct)
+            throws WorkflowException {
+        return new GeneralWorkflowResponse();
+    }
+
+    @Override
+    public WorkflowResponse deleteMonetizedSubscription(WorkflowDTO workflowDTO, APIProduct apiProduct)
+            throws WorkflowException {
+        return new GeneralWorkflowResponse();
+    }
     /**
      * Returns the stripe key of the platform/tenant
      *
