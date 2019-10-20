@@ -42,6 +42,7 @@ import org.wso2.carbon.apimgt.api.MonetizationException;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
 import org.wso2.carbon.apimgt.api.model.APIProduct;
+import org.wso2.carbon.apimgt.api.model.APIProductIdentifier;
 import org.wso2.carbon.apimgt.api.model.Monetization;
 import org.wso2.carbon.apimgt.api.model.MonetizationUsagePublishInfo;
 import org.wso2.carbon.apimgt.api.model.SubscribedAPI;
@@ -401,7 +402,7 @@ public class StripeMonetizationImpl implements Monetization {
             platformAccountKey = getStripePlatformAccountKey(tenantDomain);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                    tenantDomain + " when enabling monetization for API : " + api.getId().getApiName();
+                    tenantDomain + " when enabling monetization for : " + api.getId().getApiName();
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
@@ -412,7 +413,7 @@ public class StripeMonetizationImpl implements Monetization {
             connectedAccountKey = monetizationProperties.get
                     (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
             if (StringUtils.isBlank(connectedAccountKey)) {
-                String errorMessage = "Connected account stripe key was not found for API : " + api.getId().getApiName();
+                String errorMessage = "Connected account stripe key was not found for : " + api.getId().getApiName();
                 //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
@@ -471,97 +472,7 @@ public class StripeMonetizationImpl implements Monetization {
                 return false;
             }
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " + apiName;
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to create products and plans in stripe for : " + apiName;
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean enableMonetization(String tenantDomain, APIProduct apiProduct, Map<String, String> monetizationProperties)
-            throws MonetizationException {
-        String platformAccountKey = null;
-        try {
-            //read tenant conf and get platform account key
-            platformAccountKey = getStripePlatformAccountKey(tenantDomain);
-        } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                    tenantDomain + " when enabling monetization for API : " + apiProduct.getId().getName();
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        }
-        String connectedAccountKey;
-        //get api publisher's stripe key (i.e - connected account key) from monetization properties in request payload
-        if (MapUtils.isNotEmpty(monetizationProperties) &&
-                monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
-            connectedAccountKey = monetizationProperties.get
-                    (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
-            if (StringUtils.isBlank(connectedAccountKey)) {
-                String errorMessage = "Connected account stripe key was not found for API : " + apiProduct.getId().getName();
-                //throw MonetizationException as it will be logged and handled by the caller
-                throw new MonetizationException(errorMessage);
-            }
-        } else {
-            String errorMessage = "Stripe key of the connected account is empty.";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage);
-        }
-        String apiName = apiProduct.getId().getName();
-        String apiVersion = apiProduct.getId().getVersion();
-        String apiProvider = apiProduct.getId().getProviderName();
-        try {
-            int apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProduct.getId());
-            String billingProductIdForApi = getBillingProductIdForApi(apiId);
-            //create billing engine product if it does not exist
-            if (StringUtils.isEmpty(billingProductIdForApi)) {
-                Stripe.apiKey = platformAccountKey;
-                Map<String, Object> productParams = new HashMap<String, Object>();
-                String stripeProductName = apiName + "-" + apiVersion + "-" + apiProvider;
-                productParams.put(APIConstants.POLICY_NAME_ELEM, stripeProductName);
-                productParams.put(APIConstants.TYPE, StripeMonetizationConstants.SERVICE_TYPE);
-                RequestOptions productRequestOptions = RequestOptions.builder().setStripeAccount(
-                        connectedAccountKey).build();
-                try {
-                    Product product = Product.create(productParams, productRequestOptions);
-                    billingProductIdForApi = product.getId();
-                } catch (StripeException e) {
-                    String errorMessage = "Unable to create product in billing engine for : " + apiName;
-                    //throw MonetizationException as it will be logged and handled by the caller
-                    throw new MonetizationException(errorMessage, e);
-                }
-            }
-            Map<String, String> tierPlanMap = new HashMap<String, String>();
-            //scan for commercial tiers and add add plans in the billing engine if needed
-            for (Tier currentTier : apiProduct.getAvailableTiers()) {
-                if (APIConstants.COMMERCIAL_TIER_PLAN.equalsIgnoreCase(currentTier.getTierPlan())) {
-                    String billingPlanId = getBillingPlanIdOfTier(apiId, currentTier.getName());
-                    if (StringUtils.isBlank(billingPlanId)) {
-                        int tenantId = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
-                        String createdPlanId = createBillingPlanForCommercialTier(currentTier, tenantId,
-                                platformAccountKey, connectedAccountKey, billingProductIdForApi);
-                        if (StringUtils.isNotBlank(createdPlanId)) {
-                            log.debug("Billing plan : " + createdPlanId + " successfully created for : " +
-                                    currentTier.getName());
-                            tierPlanMap.put(currentTier.getName(), createdPlanId);
-                        } else {
-                            log.debug("Failed to create billing plan for : " + currentTier.getName());
-                        }
-                    }
-                }
-            }
-            //save data in the database - only if there is a stripe product and newly created plans
-            if (StringUtils.isNotBlank(billingProductIdForApi) && MapUtils.isNotEmpty(tierPlanMap)) {
-                stripeMonetizationDAO.addMonetizationData(apiId, billingProductIdForApi, tierPlanMap);
-            } else {
-                return false;
-            }
-        } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " + apiName;
+            String errorMessage = "Failed to get ID from database for : " + apiName;
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
@@ -589,7 +500,7 @@ public class StripeMonetizationImpl implements Monetization {
             platformAccountKey = getStripePlatformAccountKey(tenantDomain);
         } catch (StripeMonetizationException e) {
             String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                    tenantDomain + " when disabling monetization for API : " + api.getId().getApiName();
+                    tenantDomain + " when disabling monetization for : " + api.getId().getApiName();
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
@@ -600,7 +511,7 @@ public class StripeMonetizationImpl implements Monetization {
             connectedAccountKey = monetizationProperties.get
                     (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
             if (StringUtils.isBlank(connectedAccountKey)) {
-                String errorMessage = "Billing engine connected account key was not found for API : " +
+                String errorMessage = "Billing engine connected account key was not found for : " +
                         api.getId().getApiName();
                 //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
@@ -632,10 +543,10 @@ public class StripeMonetizationImpl implements Monetization {
             //after deleting all the associated plans, then delete the product
             Product product = Product.retrieve(billingProductIdForApi, requestOptions);
             product.delete(requestOptions);
-            log.debug("Successfully deleted billing product : " + billingProductIdForApi + " of API : " + apiName);
+            log.debug("Successfully deleted billing product : " + billingProductIdForApi + " of : " + apiName);
             //after deleting plans and the product, clean the database records
             stripeMonetizationDAO.deleteMonetizationData(apiId);
-            log.debug("Successfully deleted monetization database records for API : " + apiName);
+            log.debug("Successfully deleted monetization database records for : " + apiName);
         } catch (StripeException e) {
             String errorMessage = "Failed to delete products and plans in the billing engine.";
             //throw MonetizationException as it will be logged and handled by the caller
@@ -645,81 +556,7 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " + api.getId().getApiName() +
-                    " when disabling monetization.";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean disableMonetization(String tenantDomain, APIProduct apiProduct, Map<String, String> monetizationProperties)
-            throws MonetizationException {
-
-        String platformAccountKey = null;
-        try {
-            //read tenant conf and get platform account key
-            platformAccountKey = getStripePlatformAccountKey(tenantDomain);
-        } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                    tenantDomain + " when disabling monetization for : " + apiProduct.getId().getName();
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        }
-        String connectedAccountKey = StringUtils.EMPTY;
-        //get api publisher's stripe key (i.e - connected account key) from monetization properties in request payload
-        if (MapUtils.isNotEmpty(monetizationProperties) &&
-                monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
-            connectedAccountKey = monetizationProperties.get
-                    (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
-            if (StringUtils.isBlank(connectedAccountKey)) {
-                String errorMessage = "Billing engine connected account key was not found for : " +
-                        apiProduct.getId().getName();
-                //throw MonetizationException as it will be logged and handled by the caller
-                throw new MonetizationException(errorMessage);
-            }
-        } else {
-            String errorMessage = "Stripe key of the connected account is empty for tenant : " + tenantDomain;
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage);
-        }
-        try {
-            String apiName = apiProduct.getId().getName();
-            int apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProduct.getId());
-            String billingProductIdForApi = getBillingProductIdForApi(apiId);
-            //no product in the billing engine, so return
-            if (StringUtils.isBlank(billingProductIdForApi)) {
-                return false;
-            }
-            Map<String, String> tierToBillingEnginePlanMap = stripeMonetizationDAO.getTierToBillingEnginePlanMapping
-                    (apiId, billingProductIdForApi);
-            Stripe.apiKey = platformAccountKey;
-            RequestOptions requestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
-
-            for (Map.Entry<String, String> entry : tierToBillingEnginePlanMap.entrySet()) {
-                String planId = entry.getValue();
-                Plan plan = Plan.retrieve(planId, requestOptions);
-                plan.delete(requestOptions);
-                log.debug("Successfully deleted billing plan : " + planId + " of tier : " + entry.getKey());
-            }
-            //after deleting all the associated plans, then delete the product
-            Product product = Product.retrieve(billingProductIdForApi, requestOptions);
-            product.delete(requestOptions);
-            log.debug("Successfully deleted billing product : " + billingProductIdForApi + " of : " + apiName);
-            //after deleting plans and the product, clean the database records
-            stripeMonetizationDAO.deleteMonetizationData(apiId);
-            log.debug("Successfully deleted monetization database records for API : " + apiName);
-        } catch (StripeException e) {
-            String errorMessage = "Failed to delete products and plans in the billing engine.";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to fetch database records when disabling monetization for : " + apiProduct.getId().getName();
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " + apiProduct.getId().getName() +
+            String errorMessage = "Failed to get ID from database for : " + api.getId().getApiName() +
                     " when disabling monetization.";
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
@@ -752,33 +589,7 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " + api.getId().getApiName() +
-                    " when getting tier to billing engine plan mapping.";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        }
-    }
-
-    @Override
-    public Map<String, String> getMonetizedPoliciesToPlanMapping(APIProduct apiProduct) throws MonetizationException {
-
-        try {
-            String apiName = apiProduct.getId().getName();
-            int apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProduct.getId());
-            //get billing engine product ID for that API
-            String billingProductIdForApi = getBillingProductIdForApi(apiId);
-            if (StringUtils.isEmpty(billingProductIdForApi)) {
-                log.info("No product was found in billing engine for : " + apiName);
-                return new HashMap<String, String>();
-            }
-            //get tier to billing engine plan mapping
-            return stripeMonetizationDAO.getTierToBillingEnginePlanMapping(apiId, billingProductIdForApi);
-        } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to get tier to billing engine plan mapping for : " + apiProduct.getId().getName();
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        } catch (APIManagementException e) {
-            String errorMessage = "Failed to get API ID from database for : " + apiProduct.getId().getName() +
+            String errorMessage = "Failed to get ID from database for : " + api.getId().getApiName() +
                     " when getting tier to billing engine plan mapping.";
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
@@ -819,11 +630,11 @@ public class StripeMonetizationImpl implements Monetization {
             jsonObj = apiUsageStatisticsRestClient.getUsageCountForMonetization(lastPublishInfo.getLastPublishTime(),
                     currentTimestamp);
         } catch (APIMgtUsageQueryServiceClientException e) {
-            String errorMessage = "Failed to get the API Usage count for Monetization";
+            String errorMessage = "Failed to get the usage count for monetization.";
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
-        log.info("Usage record publisher is running");
+        log.info("Usage record publisher is running.");
         SubscriptionItem subscriptionItem = null;
         try {
             if (jsonObj != null) {
@@ -851,7 +662,7 @@ public class StripeMonetizationImpl implements Monetization {
                                 Stripe.apiKey = getStripePlatformAccountKey(tenantDomain);
                             } catch (StripeMonetizationException e) {
                                 String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                                        tenantDomain + " when disabling monetization for API : " + apiName;
+                                        tenantDomain + " when disabling monetization for : " + apiName;
                                 //throw MonetizationException as it will be logged and handled by the caller
                                 throw new MonetizationException(errorMessage, e);
                             } finally {
@@ -876,7 +687,7 @@ public class StripeMonetizationImpl implements Monetization {
                                     connectedAccountKey = monetizationProperties.get
                                             (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
                                     if (StringUtils.isBlank(connectedAccountKey)) {
-                                        String errorMessage = "Connected account stripe key was not found for API : "
+                                        String errorMessage = "Connected account stripe key was not found for : "
                                                 + api.getId().getApiName();
                                         //throw MonetizationException as it will be logged and handled by the caller
                                         throw new MonetizationException(errorMessage);
@@ -888,7 +699,7 @@ public class StripeMonetizationImpl implements Monetization {
                                 }
                             } catch (APIManagementException e) {
                                 String errorMessage = "Failed to get the Stripe key of the connected account from "
-                                        + "the API : " + apiName;
+                                        + "the : " + apiName;
                                 //throw MonetizationException as it will be logged and handled by the caller
                                 throw new MonetizationException(errorMessage, e);
                             } finally {
@@ -982,18 +793,42 @@ public class StripeMonetizationImpl implements Monetization {
         try {
             SubscribedAPI subscribedAPI = ApiMgtDAO.getInstance().getSubscriptionByUUID(subscriptionUUID);
             APIIdentifier apiIdentifier = subscribedAPI.getApiId();
-            API api = apiProvider.getAPI(apiIdentifier);
-            apiName = apiIdentifier.getApiName();
-            if (api.getMonetizationProperties() == null) {
-                String errorMessage = "Monetization properties are empty for API : " + apiName;
-                //throw MonetizationException as it will be logged and handled by the caller
-                throw new MonetizationException(errorMessage);
-            }
-            HashMap monetizationDataMap = new Gson().fromJson(api.getMonetizationProperties().toString(), HashMap.class);
-            if (MapUtils.isEmpty(monetizationDataMap)) {
-                String errorMessage = "Monetization data map is empty for API : " + apiName;
-                //throw MonetizationException as it will be logged and handled by the caller
-                throw new MonetizationException(errorMessage);
+            APIProductIdentifier apiProductIdentifier;
+            API api;
+            APIProduct apiProduct;
+            HashMap monetizationDataMap;
+            int apiId;
+            if (apiIdentifier != null) {
+                api = apiProvider.getAPI(apiIdentifier);
+                apiName = apiIdentifier.getApiName();
+                if (api.getMonetizationProperties() == null) {
+                    String errorMessage = "Monetization properties are empty for : " + apiName;
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage);
+                }
+                monetizationDataMap = new Gson().fromJson(api.getMonetizationProperties().toString(), HashMap.class);
+                if (MapUtils.isEmpty(monetizationDataMap)) {
+                    String errorMessage = "Monetization data map is empty for : " + apiName;
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage);
+                }
+                apiId = ApiMgtDAO.getInstance().getAPIID(apiIdentifier, null);
+            } else {
+                apiProductIdentifier = subscribedAPI.getProductId();
+                apiProduct = apiProvider.getAPIProduct(apiProductIdentifier);
+                apiName = apiProductIdentifier.getName();
+                if (apiProduct.getMonetizationProperties() == null) {
+                    String errorMessage = "Monetization properties are empty for : " + apiName;
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage);
+                }
+                monetizationDataMap = new Gson().fromJson(apiProduct.getMonetizationProperties().toString(), HashMap.class);
+                if (MapUtils.isEmpty(monetizationDataMap)) {
+                    String errorMessage = "Monetization data map is empty for : " + apiName;
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage);
+                }
+                apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProductIdentifier);
             }
             String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
             //get billing engine platform account key
@@ -1002,19 +837,18 @@ public class StripeMonetizationImpl implements Monetization {
                 String connectedAccountKey = monetizationDataMap.get
                         (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY).toString();
                 if (StringUtils.isBlank(connectedAccountKey)) {
-                    String errorMessage = "Connected account stripe key was not found for API : " + apiName;
+                    String errorMessage = "Connected account stripe key was not found for : " + apiName;
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
                 Stripe.apiKey = platformAccountKey;
                 //create request options to link with the connected account
                 RequestOptions requestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
-                int apiId = ApiMgtDAO.getInstance().getAPIID(apiIdentifier, null);
                 int applicationId = subscribedAPI.getApplication().getId();
                 String billingPlanSubscriptionId = stripeMonetizationDAO.getBillingEngineSubscriptionId(apiId, applicationId);
                 Subscription billingEngineSubscription = Subscription.retrieve(billingPlanSubscriptionId, requestOptions);
                 if (billingEngineSubscription == null) {
-                    String errorMessage = "No billing engine subscription was found for API : " + apiName;
+                    String errorMessage = "No billing engine subscription was found for : " + apiName;
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
@@ -1137,20 +971,15 @@ public class StripeMonetizationImpl implements Monetization {
                         billingEngineUsageData.get("amount_due"));
             }
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get subscriptions of API : " + apiIdentifier.getApiName();
+            String errorMessage = "Failed to get subscriptions of : " + apiIdentifier.getApiName();
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to get subscription UUID of API : " + apiIdentifier.getApiName();
+            String errorMessage = "Failed to get subscription UUID of : " + apiIdentifier.getApiName();
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         }
         return revenueData;
-    }
-
-    @Override
-    public Map<String, String> getTotalRevenue(APIProduct apiProduct, APIProvider apiProvider) throws MonetizationException {
-        return null;
     }
 
     /**
