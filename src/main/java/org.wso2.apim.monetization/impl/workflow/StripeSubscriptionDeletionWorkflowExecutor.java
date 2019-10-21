@@ -35,6 +35,7 @@ import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.WorkflowResponse;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
+import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO;
@@ -114,7 +115,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
             connectedAccountKey = monetizationProperties.get
                     (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
             if (StringUtils.isBlank(connectedAccountKey)) {
-                String errorMessage = "Connected account stripe key was not found for API : "
+                String errorMessage = "Connected account stripe key was not found for : "
                         + api.getId().getApiName();
                 log.error(errorMessage);
                 throw new WorkflowException(errorMessage);
@@ -132,7 +133,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
                     subWorkflowDTO.getApiVersion(), subWorkflowDTO.getApiProvider(), subWorkflowDTO.getApplicationId(),
                     subWorkflowDTO.getTenantDomain());
         } catch (StripeMonetizationException ex) {
-            String errorMessage = "Could not retrieve monetized subscription info for API : "
+            String errorMessage = "Could not retrieve monetized subscription info for : "
                     + subWorkflowDTO.getApplicationName() + " by Application : " + subWorkflowDTO.getApplicationName();
             throw new WorkflowException(errorMessage, ex);
         }
@@ -148,17 +149,88 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
                     stripeMonetizationDAO.removeMonetizedSubscription(monetizedSubscription.getId());
                 }
                 if (log.isDebugEnabled()) {
-                    String msg = "Monetized subscriprion for API : " + subWorkflowDTO.getApiName()
+                    String msg = "Monetized subscriprion for : " + subWorkflowDTO.getApiName()
                             + " by Application : " + subWorkflowDTO.getApplicationName() + " is removed successfully ";
                     log.debug(msg);
                 }
             } catch (StripeException ex) {
-                String errorMessage = "Failed to remove subcription in billing engine for API : "
+                String errorMessage = "Failed to remove subcription in billing engine for : "
                         + subWorkflowDTO.getApiName() + " by Application : " + subWorkflowDTO.getApplicationName();
                 log.error(errorMessage);
                 throw new WorkflowException(errorMessage, ex);
             } catch (StripeMonetizationException ex) {
-                String errorMessage = "Failed to remove monetization subcription info from DB of API : "
+                String errorMessage = "Failed to remove monetization subcription info from DB of : "
+                        + subWorkflowDTO.getApiName() + " by Application : " + subWorkflowDTO.getApplicationName();
+                log.error(errorMessage);
+                throw new WorkflowException(errorMessage, ex);
+            }
+        }
+        return execute(workflowDTO);
+    }
+
+    @Override
+    public WorkflowResponse deleteMonetizedSubscription(WorkflowDTO workflowDTO, APIProduct apiProduct)
+            throws WorkflowException {
+
+        SubscriptionWorkflowDTO subWorkflowDTO;
+        MonetizedSubscription monetizedSubscription;
+        StripeMonetizationDAO stripeMonetizationDAO = new StripeMonetizationDAO();
+        subWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
+        //read the platform key of Stripe
+        Stripe.apiKey = getPlatformAccountKey(subWorkflowDTO.getTenantId());
+        String connectedAccountKey = StringUtils.EMPTY;
+        Map<String, String> monetizationProperties = new Gson().fromJson(apiProduct.getMonetizationProperties().toString(),
+                HashMap.class);
+        if (MapUtils.isNotEmpty(monetizationProperties) &&
+                monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
+            // get the key of the connected account
+            connectedAccountKey = monetizationProperties.get
+                    (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
+            if (StringUtils.isBlank(connectedAccountKey)) {
+                String errorMessage = "Connected account stripe key was not found for : " + apiProduct.getId().getName();
+                log.error(errorMessage);
+                throw new WorkflowException(errorMessage);
+            }
+        } else {
+            String errorMessage = "Stripe key of the connected account is empty.";
+            log.error(errorMessage);
+            throw new WorkflowException(errorMessage);
+        }
+        //needed to add,remove artifacts in connected account
+        RequestOptions requestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
+        try {
+            //get the stripe subscription id
+            monetizedSubscription = stripeMonetizationDAO.getMonetizedSubscription(subWorkflowDTO.getApiName(),
+                    subWorkflowDTO.getApiVersion(), subWorkflowDTO.getApiProvider(), subWorkflowDTO.getApplicationId(),
+                    subWorkflowDTO.getTenantDomain());
+        } catch (StripeMonetizationException ex) {
+            String errorMessage = "Could not retrieve monetized subscription info for : "
+                    + subWorkflowDTO.getApplicationName() + " by application : " + subWorkflowDTO.getApplicationName();
+            throw new WorkflowException(errorMessage, ex);
+        }
+        if (monetizedSubscription.getSubscriptionId() != null) {
+            try {
+                Subscription subscription = Subscription.retrieve(monetizedSubscription.getSubscriptionId(),
+                        requestOptions);
+                Map<String, Object> params = new HashMap<>();
+                //canceled subscription will be invoiced immediately
+                params.put(StripeMonetizationConstants.INVOICE_NOW, true);
+                subscription = subscription.cancel(params, requestOptions);
+                if (StringUtils.equals(subscription.getStatus(), StripeMonetizationConstants.CANCELED)) {
+                    stripeMonetizationDAO.removeMonetizedSubscription(monetizedSubscription.getId());
+                }
+                if (log.isDebugEnabled()) {
+                    String msg = "Monetized subscriprion for : " + subWorkflowDTO.getApiName()
+                            + " by application : " + subWorkflowDTO.getApplicationName() + " is removed successfully ";
+                    log.debug(msg);
+                }
+            } catch (StripeException ex) {
+                String errorMessage = "Failed to remove subcription in billing engine for : "
+                        + subWorkflowDTO.getApiName() + " by Application : " + subWorkflowDTO.getApplicationName();
+                log.error(errorMessage);
+                throw new WorkflowException(errorMessage, ex);
+            } catch (StripeMonetizationException ex) {
+                String errorMessage = "Failed to remove monetization subcription info from DB of : "
                         + subWorkflowDTO.getApiName() + " by Application : " + subWorkflowDTO.getApplicationName();
                 log.error(errorMessage);
                 throw new WorkflowException(errorMessage, ex);

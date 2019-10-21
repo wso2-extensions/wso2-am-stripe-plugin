@@ -40,6 +40,7 @@ import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.WorkflowResponse;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
+import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.api.model.Subscriber;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
@@ -169,6 +170,77 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         } catch (StripeMonetizationException e) {
             String errorMessage = "Could not monetize subscription for API : " + subWorkFlowDTO.getApiName()
                     + " by Application " + subWorkFlowDTO.getApplicationName();
+            log.error(errorMessage);
+            throw new WorkflowException(errorMessage, e);
+        }
+        return execute(workflowDTO);
+    }
+
+    @Override
+    public WorkflowResponse monetizeSubscription(WorkflowDTO workflowDTO, APIProduct apiProduct)
+            throws WorkflowException {
+
+        boolean isMonetizationEnabled = false;
+        SubscriptionWorkflowDTO subWorkFlowDTO = null;
+        String stripePlatformAccountKey = null;
+        Subscriber subscriber = null;
+        Customer customer = null;
+        Customer sharedCustomerBE = null;
+        MonetizationPlatformCustomer monetizationPlatformCustomer;
+        MonetizationSharedCustomer monetizationSharedCustomer;
+        ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
+        subWorkFlowDTO = (SubscriptionWorkflowDTO) workflowDTO;
+        //read the platform account key of Stripe
+        Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
+        String connectedAccountKey = StringUtils.EMPTY;
+        Map<String, String> monetizationProperties = new Gson().fromJson(apiProduct.getMonetizationProperties().toString(),
+                HashMap.class);
+        if (MapUtils.isNotEmpty(monetizationProperties) &&
+                monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
+            connectedAccountKey = monetizationProperties.get
+                    (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
+            if (StringUtils.isBlank(connectedAccountKey)) {
+                String errorMessage = "Connected account stripe key was not found for : "
+                        + apiProduct.getId().getName();
+                log.error(errorMessage);
+                throw new WorkflowException(errorMessage);
+            }
+        } else {
+            String errorMessage = "Stripe key of the connected account is empty.";
+            log.error(errorMessage);
+            throw new WorkflowException(errorMessage);
+        }
+        //needed to create artifacts in the stripe connected account
+        RequestOptions requestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
+        try {
+            subscriber = apiMgtDAO.getSubscriber(subWorkFlowDTO.getSubscriber());
+            // check whether the application is already registered as a customer under the particular
+            // APIprovider/Connected Account in Stripe
+            monetizationSharedCustomer = stripeMonetizationDAO.getSharedCustomer(subWorkFlowDTO.getApplicationId(),
+                    subWorkFlowDTO.getApiProvider(), subWorkFlowDTO.getTenantId());
+            if (monetizationSharedCustomer.getSharedCustomerId() == null) {
+                // checks whether the subscriber is already registered as a customer Under the
+                // tenant/Platform account in Stripe
+                monetizationPlatformCustomer = stripeMonetizationDAO.getPlatformCustomer(subscriber.getId(),
+                        subscriber.getTenantId());
+                if (monetizationPlatformCustomer.getCustomerId() == null) {
+                    monetizationPlatformCustomer = createMonetizationPlatformCutomer(subscriber);
+                }
+                monetizationSharedCustomer = createSharedCustomer(subscriber.getEmail(), monetizationPlatformCustomer,
+                        requestOptions, subWorkFlowDTO);
+            }
+            //creating Subscriptions
+            int apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProduct.getId());
+            String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
+            createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO);
+        } catch (APIManagementException e) {
+            String errorMessage = "Could not monetize subscription for : " + subWorkFlowDTO.getApiName()
+                    + " by application : " + subWorkFlowDTO.getApplicationName();
+            log.error(errorMessage);
+            throw new WorkflowException(errorMessage, e);
+        } catch (StripeMonetizationException e) {
+            String errorMessage = "Could not monetize subscription for : " + subWorkFlowDTO.getApiName()
+                    + " by application " + subWorkFlowDTO.getApplicationName();
             log.error(errorMessage);
             throw new WorkflowException(errorMessage, e);
         }
