@@ -54,9 +54,6 @@ import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
-import org.wso2.carbon.apimgt.usage.client.APIUsageStatisticsClientConstants;
-import org.wso2.carbon.apimgt.usage.client.exception.APIMgtUsageQueryServiceClientException;
-import org.wso2.carbon.apimgt.usage.client.impl.APIUsageStatisticsRestClientImpl;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
@@ -625,11 +622,10 @@ public class StripeMonetizationImpl implements Monetization {
         String currentDate = df.format(dateobj);
         currentTimestamp = getTimestamp(currentDate);
         try {
-            APIUsageStatisticsRestClientImpl apiUsageStatisticsRestClient = new APIUsageStatisticsRestClientImpl();
             //get the data from SP rest queries as a json object
-            jsonObj = apiUsageStatisticsRestClient.getUsageCountForMonetization(lastPublishInfo.getLastPublishTime(),
+            jsonObj = APIUtil.getUsageCountForMonetization(lastPublishInfo.getLastPublishTime(),
                     currentTimestamp);
-        } catch (APIMgtUsageQueryServiceClientException e) {
+        } catch (APIManagementException e) {
             String errorMessage = "Failed to get the usage count for monetization.";
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
@@ -638,7 +634,7 @@ public class StripeMonetizationImpl implements Monetization {
         SubscriptionItem subscriptionItem = null;
         try {
             if (jsonObj != null) {
-                JSONArray jArray = (JSONArray) jsonObj.get(APIUsageStatisticsClientConstants.RECORDS_DELIMITER);
+                JSONArray jArray = (JSONArray) jsonObj.get(APIConstants.Analytics.RECORDS_DELIMITER);
                 for (Object record : jArray) {
                     JSONArray recordArray = (JSONArray) record;
                     // should return the 6 paramters derived below
