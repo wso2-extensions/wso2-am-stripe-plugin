@@ -864,7 +864,8 @@ public class StripeMonetizationImpl implements Monetization {
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
-                SimpleDateFormat dateFormatter = new SimpleDateFormat("EEEE, MMMM d");
+                SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+                dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
                 //the below parameters are billing engine specific
                 billingEngineUsageData.put("Description", invoice.getDescription());
                 billingEngineUsageData.put("Paid", invoice.getPaid() != null ? invoice.getPaid().toString() : null);
@@ -873,14 +874,14 @@ public class StripeMonetizationImpl implements Monetization {
                 billingEngineUsageData.put("Invoice ID", invoice.getId());
                 billingEngineUsageData.put("Account Name", invoice.getAccountName());
                 billingEngineUsageData.put("Next Payment Attempt", invoice.getNextPaymentAttempt() != null ?
-                        dateFormatter.format(new Date(invoice.getNextPaymentAttempt())) : null);
+                        dateFormatter.format(new Date(invoice.getNextPaymentAttempt() * 1000)) : null);
                 billingEngineUsageData.put("Customer Email", invoice.getCustomerEmail());
                 billingEngineUsageData.put("Currency", invoice.getCurrency());
                 billingEngineUsageData.put("Account Country", invoice.getAccountCountry());
                 billingEngineUsageData.put("Amount Remaining", invoice.getAmountRemaining() != null ?
                         Long.toString(invoice.getAmountRemaining() / 100L) : null);
                 billingEngineUsageData.put("Period End", invoice.getPeriodEnd() != null ?
-                        dateFormatter.format(new Date(invoice.getPeriodEnd())) : null);
+                        dateFormatter.format(new Date(invoice.getPeriodEnd() * 1000)) : null);
                 billingEngineUsageData.put("Due Date", invoice.getDueDate() != null ?
                         dateFormatter.format(new Date(invoice.getDueDate())) : null);
                 billingEngineUsageData.put("Amount Due", invoice.getAmountDue() != null ?
@@ -894,7 +895,7 @@ public class StripeMonetizationImpl implements Monetization {
                 billingEngineUsageData.put("Total", invoice.getTotal() != null ?
                         Long.toString(invoice.getTotal() / 100L) : null);
                 billingEngineUsageData.put("Period Start", invoice.getPeriodStart() != null ?
-                        dateFormatter.format(new Date(invoice.getPeriodStart())) : null);
+                        dateFormatter.format(new Date(invoice.getPeriodStart() * 1000)) : null);
 
                 //the below parameters are also returned from stripe, but commented for simplicity of the invoice
                 /*billingEngineUsageData.put("object", "invoice");
