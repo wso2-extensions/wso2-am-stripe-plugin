@@ -9,6 +9,7 @@ This is a sample implementation to support usage based billing for a API subscri
 | Stripe Extension Version | Supported WSO2 APIM Version |
 | :-------------: | :---------------:|
 | [1.0.0](https://github.com/wso2-extensions/wso2-am-stripe-plugin/tree/v1.0.0) | API Manager 3.0.0 
+| [1.1.1](https://github.com/wso2-extensions/wso2-am-stripe-plugin/tree/v1.1.1) | API Manager 3.1.0 
 
 
 ## Getting Started
