@@ -119,10 +119,11 @@ public class StripeMonetizationConstants {
     public static final String ITEMS = "items";
     public static final String ACTION = "action";
     public static final String INCREMENT = "increment";
-    public static final String TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final String TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
+    public static final String TIMEZONE_FORMAT = ".023+05:30";
     public static final String QUANTITY = "quantity";
     public static final String TIMESTAMP = "timestamp";
-    public static final String TIME_ZONE = "UTC";
+    public static final String TIME_ZONE = "IST";
     public static final String COMPLETED = "COMPLETED";
     public static final String RUNNING = "RUNNING";
     public static final String INPROGRESS = "INPROGRESS";
@@ -132,5 +133,19 @@ public class StripeMonetizationConstants {
     public static final String DEFAULT_TOKEN = "tok_visa";
     public static final String INVOICE_NOW = "invoice_now";
     public static final String CANCELED = "canceled";
-
+    public static final String ANALYTICS_ACCESS_TOKEN_PROP = "Monetization.UsagePublisher.AnalyticsAccessToken";
+    public static final String ANALYTICS_QUERY_API_ENDPOINT_PROP = "Monetization.UsagePublisher." +
+            "AnalyticsQueryAPIEndpoint";
+    public static final String FROM = "from";
+    public static final String TO = "to";
+    public static final String API_ID_COL = "apiIds";
+    public static final String TENANT_DOMAIN_COL = "tenantDomains";
+    public static final String TIME_FILTER = "timeFilter";
+    public static final String API_USAGE_BY_APP_FILTER = "successAPIUsageByAppFilter";
+    public static final String API_NAME = "apiName";
+    public static final String API_VERSION = "apiVersion";
+    public static final String TENANT_DOMAIN = "tenantDomain";
+    public static final String COUNT = "count";
+    public static final String APPLICATION_NAME = "applicationName";
+    public static final String APPLICATION_OWNER = "applicationOwner";
 }
