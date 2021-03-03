@@ -567,7 +567,8 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to fetch database records when disabling monetization for : " + api.getId().getApiName();
+            String errorMessage = "Failed to fetch database records when disabling monetization for : " +
+                    api.getId().getApiName();
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
@@ -653,15 +654,15 @@ public class StripeMonetizationImpl implements Monetization {
             config = ServiceReferenceHolder.getInstance().getAPIManagerConfigurationService().
                     getAPIManagerConfiguration();
         }
-        queryApiEndpoint = config.getFirstProperty(StripeMonetizationConstants.ANALYTICS_QUERY_API_ENDPOINT_PROP);
-        if(StringUtils.isEmpty(queryApiEndpoint) ){
+        queryApiEndpoint = config.getFirstProperty(
+                StripeMonetizationConstants.ANALYTICS_QUERY_API_ENDPOINT_PROP);
+        if (StringUtils.isEmpty(queryApiEndpoint)) {
             throw new MonetizationException("Endpoint for the the analytics query api is not configured");
         }
         accessToken = config.getFirstProperty(StripeMonetizationConstants.ANALYTICS_ACCESS_TOKEN_PROP);
-        if(StringUtils.isEmpty(accessToken) ){
+        if (StringUtils.isEmpty(accessToken)) {
             throw new MonetizationException("Access token for the the analytics query api is not configured");
         }
-
         DateFormat df = new SimpleDateFormat();
         Date dateobj = new Date();
         //get the time in UTC format
@@ -669,54 +670,47 @@ public class StripeMonetizationImpl implements Monetization {
         //used for stripe recording
         String currentDate = df.format(dateobj);
         currentTimestamp = getTimestamp(currentDate);
-
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
         String toDate = simpleDateFormat.format(dateobj);
         //The implementation will be improved to use offset date time to get the time zone based on user input
         String formattedToDate = toDate.concat(StripeMonetizationConstants.TIMEZONE_FORMAT);
-
         String fromDate = new java.text.SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT).format(
-                new java.util.Date (lastPublishInfo.getLastPublishTime()));
+                new java.util.Date(lastPublishInfo.getLastPublishTime()));
         //The implementation will be improved to use offset date time to get the time zone based on user input
         String formattedFromDate = fromDate.concat(StripeMonetizationConstants.TIMEZONE_FORMAT);
-
         JSONObject timeFilter = new JSONObject();
         timeFilter.put(StripeMonetizationConstants.FROM, formattedFromDate);
         timeFilter.put(StripeMonetizationConstants.TO, formattedToDate);
-
         JSONArray monetizedAPIIds = new JSONArray();
         JSONArray tenantDomains = new JSONArray();
-        try{
-        List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
-        for (Tenant tenant : tenants) {
-            tenantDomains.add(tenant.getDomain());
-            try {
-                PrivilegedCarbonContext.startTenantFlow();
-                PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
-                        tenant.getDomain(), true);
-                APIProvider apiProviderNew = RestApiCommonUtil.getProvider(APIUtil.getAdminUsername());
-                List<API> allowedAPIs = apiProviderNew.getAllAPIs();
-                for (API api : allowedAPIs) {
-                    if (api.isMonetizationEnabled()) {
-                        monetizedAPIIds.add(api.getUUID());
+        try {
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            for (Tenant tenant : tenants) {
+                tenantDomains.add(tenant.getDomain());
+                try {
+                    PrivilegedCarbonContext.startTenantFlow();
+                    PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
+                            tenant.getDomain(), true);
+                    APIProvider apiProviderNew = RestApiCommonUtil.getProvider(APIUtil.getAdminUsername());
+                    List<API> allowedAPIs = apiProviderNew.getAllAPIs();
+                    for (API api : allowedAPIs) {
+                        if (api.isMonetizationEnabled()) {
+                            monetizedAPIIds.add(api.getUUID());
+                        }
                     }
+                } catch (APIManagementException e) {
+                    throw new MonetizationException("Error while retrieving the Ids of Monetized APIs");
                 }
-            } catch (APIManagementException e) {
-                throw new MonetizationException("Error while retrieving the Ids of Monetized APIs");
             }
-        }
-        }catch(UserStoreException e){
+        } catch (UserStoreException e) {
             throw new MonetizationException("Error while retrieving the tenants", e);
         }
-
         JSONObject successAPIUsageByAppFilter = new JSONObject();
         successAPIUsageByAppFilter.put(StripeMonetizationConstants.API_ID_COL, monetizedAPIIds);
         successAPIUsageByAppFilter.put(StripeMonetizationConstants.TENANT_DOMAIN_COL, tenantDomains);
-
         JSONObject variables = new JSONObject();
-        variables.put(StripeMonetizationConstants.TIME_FILTER,timeFilter);
+        variables.put(StripeMonetizationConstants.TIME_FILTER, timeFilter);
         variables.put(StripeMonetizationConstants.API_USAGE_BY_APP_FILTER, successAPIUsageByAppFilter);
-
         GraphQLClient graphQLCliet =
                 Feign.builder().client(new OkHttpClient()).encoder(new GsonEncoder()).decoder(new GsonDecoder())
                         .logger(new Slf4jLogger()).requestInterceptor(new QueyAPIAccessTokenInterceptor(accessToken))
@@ -828,7 +822,7 @@ public class StripeMonetizationImpl implements Monetization {
                             if (log.isDebugEnabled()) {
                                 String msg = "Usage for " + apiName + " by Application with ID " + applicationId
                                         + " is successfully published to Stripe";
-                                log.info(msg);
+                                log.debug(msg);
                             }
                         }
                     }
@@ -1038,7 +1032,8 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (SQLException e) {
-            e.printStackTrace();
+            String errorMessage = "Error while retrieving the API ID";
+            throw new MonetizationException(errorMessage, e);
         }
         return billingEngineUsageData;
     }

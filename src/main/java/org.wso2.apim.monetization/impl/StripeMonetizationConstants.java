@@ -123,7 +123,7 @@ public class StripeMonetizationConstants {
     public static final String TIMEZONE_FORMAT = ".023+05:30";
     public static final String QUANTITY = "quantity";
     public static final String TIMESTAMP = "timestamp";
-    public static final String TIME_ZONE = "IST";
+    public static final String TIME_ZONE = "UTC";
     public static final String COMPLETED = "COMPLETED";
     public static final String RUNNING = "RUNNING";
     public static final String INPROGRESS = "INPROGRESS";
