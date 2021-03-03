@@ -50,8 +50,6 @@
         <carbon.apimgt.version>9.0.17</carbon.apimgt.version>
         <commons.lang.version>2.6</commons.lang.version>
         <stripe.version>9.8.0</stripe.version>
-        <feign.version>11.0</feign.version>
-        <maven.checkstyle.plugin.version>3.0.0</maven.checkstyle.plugin.version>
     </properties>
 
     <build>
