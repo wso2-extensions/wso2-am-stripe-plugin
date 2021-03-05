@@ -85,7 +85,6 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
 
         workflowDTO.setStatus(WorkflowStatus.APPROVED);
         complete(workflowDTO);
-        super.publishEvents(workflowDTO);
         return new GeneralWorkflowResponse();
     }
 

@@ -57,6 +57,7 @@ import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 
 import java.nio.charset.Charset;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +93,6 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         super.execute(workflowDTO);
         workflowDTO.setStatus(WorkflowStatus.APPROVED);
         WorkflowResponse workflowResponse = complete(workflowDTO);
-        super.publishEvents(workflowDTO);
 
         return new GeneralWorkflowResponse();
     }
@@ -171,6 +171,9 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             String errorMessage = "Could not monetize subscription for API : " + subWorkFlowDTO.getApiName()
                     + " by Application " + subWorkFlowDTO.getApplicationName();
             log.error(errorMessage);
+            throw new WorkflowException(errorMessage, e);
+        } catch (SQLException e) {
+            String errorMessage = "Error while retrieving the API ID";
             throw new WorkflowException(errorMessage, e);
         }
         return execute(workflowDTO);

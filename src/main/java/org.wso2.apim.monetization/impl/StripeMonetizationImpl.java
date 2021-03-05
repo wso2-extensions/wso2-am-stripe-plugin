@@ -17,6 +17,7 @@
 package org.wso2.apim.monetization.impl;
 
 import com.google.gson.Gson;
+import com.google.gson.internal.LinkedTreeMap;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Invoice;
@@ -26,15 +27,22 @@ import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.model.UsageRecord;
 import com.stripe.net.RequestOptions;
+import feign.Feign;
+import feign.gson.GsonDecoder;
+import feign.gson.GsonEncoder;
+import feign.okhttp.OkHttpClient;
+import feign.slf4j.Slf4jLogger;
+
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.wso2.apim.monetization.impl.model.MonetizedSubscription;
+import org.wso2.apim.monetization.impl.model.*;
 import org.wso2.carbon.apimgt.api.APIAdmin;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
@@ -48,28 +56,33 @@ import org.wso2.carbon.apimgt.api.model.MonetizationUsagePublishInfo;
 import org.wso2.carbon.apimgt.api.model.SubscribedAPI;
 import org.wso2.carbon.apimgt.api.model.Tier;
 import org.wso2.carbon.apimgt.api.model.policy.SubscriptionPolicy;
-import org.wso2.carbon.apimgt.impl.APIAdminImpl;
-import org.wso2.carbon.apimgt.impl.APIConstants;
-import org.wso2.carbon.apimgt.impl.APIManagerFactory;
+import org.wso2.carbon.apimgt.impl.*;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
+import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.carbon.apimgt.persistence.APIPersistence;
+import org.wso2.carbon.apimgt.persistence.PersistenceManager;
+import org.wso2.carbon.apimgt.persistence.dto.Organization;
+import org.wso2.carbon.apimgt.persistence.dto.PublisherAPIInfo;
+import org.wso2.carbon.apimgt.persistence.dto.PublisherAPISearchResult;
+import org.wso2.carbon.apimgt.persistence.dto.UserContext;
+import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
+import org.wso2.carbon.apimgt.persistence.mapper.APIMapper;
+import org.wso2.carbon.apimgt.rest.api.common.RestApiCommonUtil;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
+import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.nio.charset.Charset;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.*;
 
 /**
  * This class is used to implement stripe based monetization
@@ -78,6 +91,8 @@ public class StripeMonetizationImpl implements Monetization {
 
     private static final Log log = LogFactory.getLog(StripeMonetizationImpl.class);
     private StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
+    private static APIManagerConfiguration config = null;
+    private ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
 
     /**
      * Create billing plan for a policy
@@ -476,6 +491,9 @@ public class StripeMonetizationImpl implements Monetization {
             String errorMessage = "Failed to create products and plans in stripe for : " + apiName;
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
+        } catch (SQLException e) {
+            String errorMessage = "Error while retrieving the API ID";
+            throw new MonetizationException(errorMessage, e);
         }
         return true;
     }
@@ -549,13 +567,17 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (StripeMonetizationException e) {
-            String errorMessage = "Failed to fetch database records when disabling monetization for : " + api.getId().getApiName();
+            String errorMessage = "Failed to fetch database records when disabling monetization for : " +
+                    api.getId().getApiName();
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get ID from database for : " + api.getId().getApiName() +
                     " when disabling monetization.";
             //throw MonetizationException as it will be logged and handled by the caller
+            throw new MonetizationException(errorMessage, e);
+        } catch (SQLException e) {
+            String errorMessage = "Error while retrieving the API ID";
             throw new MonetizationException(errorMessage, e);
         }
         return true;
@@ -590,6 +612,9 @@ public class StripeMonetizationImpl implements Monetization {
                     " when getting tier to billing engine plan mapping.";
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
+        } catch (SQLException e) {
+            String errorMessage = "Error while retrieving the API ID";
+            throw new MonetizationException(e);
         }
     }
 
@@ -606,150 +631,217 @@ public class StripeMonetizationImpl implements Monetization {
         String apiName = null;
         String apiVersion = null;
         String tenantDomain = null;
+        String applicationName = null;
+        String applicationOwner = null;
         int applicationId;
         String apiProvider = null;
         Long requestCount = 0L;
         Long currentTimestamp;
         int flag = 0;
         int counter = 0;
-        JSONObject jsonObj = null;
         APIAdmin apiAdmin = new APIAdminImpl();
+        SubscriptionItem subscriptionItem = null;
+        String accessToken = null;
+        String queryApiEndpoint = null;
+        String graphQLquery = "query($timeFilter: TimeFilter!, " +
+                "$successAPIUsageByAppFilter: SuccessAPIUsageByAppFilter!) " +
+                "{getSuccessAPIsUsageByApplications(timeFilter: $timeFilter, " +
+                "successAPIUsageByAppFilter: $successAPIUsageByAppFilter) { apiId apiName apiVersion " +
+                "apiCreatorTenantDomain applicationId applicationName applicationOwner count}}";
 
-        DateFormat df = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
+        if (config == null) {
+            // Retrieve the access token from api manager configurations.
+            config = ServiceReferenceHolder.getInstance().getAPIManagerConfigurationService().
+                    getAPIManagerConfiguration();
+        }
+        queryApiEndpoint = config.getFirstProperty(
+                StripeMonetizationConstants.ANALYTICS_QUERY_API_ENDPOINT_PROP);
+        if (StringUtils.isEmpty(queryApiEndpoint)) {
+            throw new MonetizationException("Endpoint for the the analytics query api is not configured");
+        }
+        accessToken = config.getFirstProperty(StripeMonetizationConstants.ANALYTICS_ACCESS_TOKEN_PROP);
+        if (StringUtils.isEmpty(accessToken)) {
+            throw new MonetizationException("Access token for the the analytics query api is not configured");
+        }
+        DateFormat df = new SimpleDateFormat();
         Date dateobj = new Date();
         //get the time in UTC format
         df.setTimeZone(TimeZone.getTimeZone(StripeMonetizationConstants.TIME_ZONE));
+        //used for stripe recording
         String currentDate = df.format(dateobj);
         currentTimestamp = getTimestamp(currentDate);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
+        String toDate = simpleDateFormat.format(dateobj);
+        //The implementation will be improved to use offset date time to get the time zone based on user input
+        String formattedToDate = toDate.concat(StripeMonetizationConstants.TIMEZONE_FORMAT);
+        String fromDate = new java.text.SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT).format(
+                new java.util.Date(lastPublishInfo.getLastPublishTime()));
+        //The implementation will be improved to use offset date time to get the time zone based on user input
+        String formattedFromDate = fromDate.concat(StripeMonetizationConstants.TIMEZONE_FORMAT);
+        JSONObject timeFilter = new JSONObject();
+        timeFilter.put(StripeMonetizationConstants.FROM, formattedFromDate);
+        timeFilter.put(StripeMonetizationConstants.TO, formattedToDate);
+        JSONArray monetizedAPIIds = new JSONArray();
+        JSONArray tenantDomains = new JSONArray();
         try {
-            //get the data from SP rest queries as a json object
-            jsonObj = APIUtil.getUsageCountForMonetization(lastPublishInfo.getLastPublishTime(),
-                    currentTimestamp);
-        } catch (APIManagementException e) {
-            String errorMessage = "Failed to get the usage count for monetization.";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            for (Tenant tenant : tenants) {
+                tenantDomains.add(tenant.getDomain());
+                try {
+                    PrivilegedCarbonContext.startTenantFlow();
+                    PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
+                            tenant.getDomain(), true);
+                    APIProvider apiProviderNew = RestApiCommonUtil.getProvider(APIUtil.getAdminUsername());
+                    List<API> allowedAPIs = apiProviderNew.getAllAPIs();
+                    for (API api : allowedAPIs) {
+                        if (api.isMonetizationEnabled()) {
+                            monetizedAPIIds.add(api.getUUID());
+                        }
+                    }
+                } catch (APIManagementException e) {
+                    throw new MonetizationException("Error while retrieving the Ids of Monetized APIs");
+                }
+            }
+        } catch (UserStoreException e) {
+            throw new MonetizationException("Error while retrieving the tenants", e);
         }
-        log.info("Usage record publisher is running.");
-        SubscriptionItem subscriptionItem = null;
-        try {
-            if (jsonObj != null) {
-                JSONArray jArray = (JSONArray) jsonObj.get(APIConstants.Analytics.RECORDS_DELIMITER);
-                for (Object record : jArray) {
-                    JSONArray recordArray = (JSONArray) record;
-                    // should return the 6 paramters derived below
-                    if (recordArray.size() == 6) {
-                        apiName = (String) recordArray.get(0);
-                        apiVersion = (String) recordArray.get(1);
-                        apiProvider = (String) recordArray.get(2);
-                        tenantDomain = (String) recordArray.get(3);
-                        applicationId = Integer.parseInt((String) recordArray.get(4));
-                        requestCount = (Long) recordArray.get(5);
-                        //get the billing engine subscription details
-                        MonetizedSubscription subscription = stripeMonetizationDAO.getMonetizedSubscription(apiName,
-                                apiVersion, apiProvider, applicationId, tenantDomain);
-                        if (subscription.getSubscriptionId() != null) {
-                            try {
-                                //start the tenant flow to get the platform key
-                                PrivilegedCarbonContext.startTenantFlow();
-                                PrivilegedCarbonContext.getThreadLocalCarbonContext().
-                                        setTenantDomain(tenantDomain, true);
-                                //read tenant conf and get platform account key
-                                Stripe.apiKey = getStripePlatformAccountKey(tenantDomain);
-                            } catch (StripeMonetizationException e) {
-                                String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
-                                        tenantDomain + " when disabling monetization for : " + apiName;
+        JSONObject successAPIUsageByAppFilter = new JSONObject();
+        successAPIUsageByAppFilter.put(StripeMonetizationConstants.API_ID_COL, monetizedAPIIds);
+        successAPIUsageByAppFilter.put(StripeMonetizationConstants.TENANT_DOMAIN_COL, tenantDomains);
+        JSONObject variables = new JSONObject();
+        variables.put(StripeMonetizationConstants.TIME_FILTER, timeFilter);
+        variables.put(StripeMonetizationConstants.API_USAGE_BY_APP_FILTER, successAPIUsageByAppFilter);
+        GraphQLClient graphQLCliet =
+                Feign.builder().client(new OkHttpClient()).encoder(new GsonEncoder()).decoder(new GsonDecoder())
+                        .logger(new Slf4jLogger()).requestInterceptor(new QueyAPIAccessTokenInterceptor(accessToken))
+                        .target(GraphQLClient.class, queryApiEndpoint);
+        GraphqlQueryModel queryModel = new GraphqlQueryModel();
+        queryModel.setQuery(graphQLquery);
+        queryModel.setVariables(variables);
+        graphQLResponseClient usageResponse = graphQLCliet.getSuccessAPIsUsageByApplications(queryModel);
+        LinkedTreeMap<String, ArrayList<LinkedTreeMap<String, String>>> data = usageResponse.getData();
+        for (Map.Entry<String, ArrayList<LinkedTreeMap<String, String>>> entry : data.entrySet()) {
+            String key = entry.getKey();
+            ArrayList<LinkedTreeMap<String, String>> apiUsageDataCollection = entry.getValue();
+            for (LinkedTreeMap<String, String> apiUsageData : apiUsageDataCollection) {
+                apiName = apiUsageData.get(StripeMonetizationConstants.API_NAME);
+                apiVersion = apiUsageData.get(StripeMonetizationConstants.API_VERSION);
+                tenantDomain = apiUsageData.get(StripeMonetizationConstants.TENANT_DOMAIN);
+                applicationName = apiUsageData.get(StripeMonetizationConstants.APPLICATION_NAME);
+                applicationOwner = apiUsageData.get(StripeMonetizationConstants.APPLICATION_OWNER);
+                try {
+                    applicationId = apiMgtDAO.getApplicationId(applicationName, applicationOwner);
+                } catch (APIManagementException e) {
+                    throw new MonetizationException("Error while retrieving Application Id for " +
+                            "Applictaion " + applicationName, e);
+                }
+                requestCount = Long.parseLong(apiUsageData.get(StripeMonetizationConstants.COUNT));
+                try {
+                    //get the billing engine subscription details
+                    MonetizedSubscription subscription = stripeMonetizationDAO.getMonetizedSubscription(apiName,
+                            apiVersion, apiProvider, applicationId, tenantDomain);
+                    if (subscription.getSubscriptionId() != null) {
+                        try {
+                            //start the tenant flow to get the platform key
+                            PrivilegedCarbonContext.startTenantFlow();
+                            PrivilegedCarbonContext.getThreadLocalCarbonContext().
+                                    setTenantDomain(tenantDomain, true);
+                            //read tenant conf and get platform account key
+                            Stripe.apiKey = getStripePlatformAccountKey(tenantDomain);
+                        } catch (StripeMonetizationException e) {
+                            String errorMessage = "Failed to get Stripe platform account key for tenant :  " +
+                                    tenantDomain + " when disabling monetization for : " + apiName;
+                            //throw MonetizationException as it will be logged and handled by the caller
+                            throw new MonetizationException(errorMessage, e);
+                        } finally {
+                            PrivilegedCarbonContext.endTenantFlow();
+                        }
+                    }
+                    String connectedAccountKey;
+                    try {
+                        PrivilegedCarbonContext.startTenantFlow();
+                        PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
+                                tenantDomain, true);
+                        apiProvider = APIUtil.replaceEmailDomain(apiProvider);
+                        APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
+                        APIProvider apiProvider1 = APIManagerFactory.getInstance().getAPIProvider(apiProvider);
+                        API api = apiProvider1.getAPI(identifier);
+                        Map<String, String> monetizationProperties = new Gson().fromJson(
+                                api.getMonetizationProperties().toString(), HashMap.class);
+                        //get api publisher's stripe key (i.e - connected account key) from monetization
+                        // properties in request payload
+                        if (MapUtils.isNotEmpty(monetizationProperties) &&
+                                monetizationProperties.containsKey(
+                                        StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
+                            connectedAccountKey = monetizationProperties.get
+                                    (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
+                            if (StringUtils.isBlank(connectedAccountKey)) {
+                                String errorMessage = "Connected account stripe key was not found for : "
+                                        + api.getId().getApiName();
                                 //throw MonetizationException as it will be logged and handled by the caller
-                                throw new MonetizationException(errorMessage, e);
-                            } finally {
-                                PrivilegedCarbonContext.endTenantFlow();
+                                throw new MonetizationException(errorMessage);
                             }
-                            String connectedAccountKey;
-                            try {
-                                PrivilegedCarbonContext.startTenantFlow();
-                                PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
-                                        tenantDomain, true);
-                                apiProvider = APIUtil.replaceEmailDomain(apiProvider);
-                                APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
-                                APIProvider apiProvider1 = APIManagerFactory.getInstance().getAPIProvider(apiProvider);
-                                API api = apiProvider1.getAPI(identifier);
-                                Map<String, String> monetizationProperties = new Gson().fromJson(
-                                        api.getMonetizationProperties().toString(), HashMap.class);
-                                //get api publisher's stripe key (i.e - connected account key) from monetization
-                                // properties in request payload
-                                if (MapUtils.isNotEmpty(monetizationProperties) &&
-                                        monetizationProperties.containsKey(
-                                                StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
-                                    connectedAccountKey = monetizationProperties.get
-                                            (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
-                                    if (StringUtils.isBlank(connectedAccountKey)) {
-                                        String errorMessage = "Connected account stripe key was not found for : "
-                                                + api.getId().getApiName();
-                                        //throw MonetizationException as it will be logged and handled by the caller
-                                        throw new MonetizationException(errorMessage);
-                                    }
-                                } else {
-                                    String errorMessage = "Stripe key of the connected account is empty.";
-                                    //throw MonetizationException as it will be logged and handled by the caller
-                                    throw new MonetizationException(errorMessage);
-                                }
-                            } catch (APIManagementException e) {
-                                String errorMessage = "Failed to get the Stripe key of the connected account from "
-                                        + "the : " + apiName;
-                                //throw MonetizationException as it will be logged and handled by the caller
-                                throw new MonetizationException(errorMessage, e);
-                            } finally {
-                                PrivilegedCarbonContext.endTenantFlow();
-                            }
-                            RequestOptions subRequestOptions = RequestOptions.builder().
-                                    setStripeAccount(connectedAccountKey).build();
-                            Subscription sub = Subscription.retrieve(subscription.getSubscriptionId(),
-                                    subRequestOptions);
-                            //get the first subscription item from the array
-                            subscriptionItem = sub.getItems().getData().get(0);
-                            //check whether the billing plan is Usage Based.
-                            if (subscriptionItem.getPlan().getUsageType().equals(
-                                    StripeMonetizationConstants.METERED_PLAN)) {
-                                flag++;
-                                Map<String, Object> usageRecordParams = new HashMap<String, Object>();
-                                usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
-                                //provide the timesatmp in second format
-                                usageRecordParams.put(StripeMonetizationConstants.TIMESTAMP,
-                                        getTimestamp(currentDate) / 1000);
-                                usageRecordParams.put(StripeMonetizationConstants.ACTION,
-                                        StripeMonetizationConstants.INCREMENT);
-                                RequestOptions usageRequestOptions = RequestOptions.builder().
-                                        setStripeAccount(connectedAccountKey).setIdempotencyKey(subscriptionItem.getId()
-                                        + lastPublishInfo.getLastPublishTime() + requestCount).build();
-                                UsageRecord usageRecord = UsageRecord.createOnSubscriptionItem(
-                                        subscriptionItem.getId(), usageRecordParams, usageRequestOptions);
-                                //checks whether the usage record is published successfully
-                                if (usageRecord.getId() != null) {
-                                    counter++;
-                                    if (log.isDebugEnabled()) {
-                                        String msg = "Usage for " + apiName + " by Application with ID " + applicationId
-                                                + " is successfully published to Stripe";
-                                        log.info(msg);
-                                    }
-                                }
+                        } else {
+                            String errorMessage = "Stripe key of the connected account is empty.";
+                            //throw MonetizationException as it will be logged and handled by the caller
+                            throw new MonetizationException(errorMessage);
+                        }
+                    } catch (APIManagementException e) {
+                        String errorMessage = "Failed to get the Stripe key of the connected account from "
+                                + "the : " + apiName;
+                        //throw MonetizationException as it will be logged and handled by the caller
+                        throw new MonetizationException(errorMessage, e);
+                    } finally {
+                        PrivilegedCarbonContext.endTenantFlow();
+                    }
+                    RequestOptions subRequestOptions = RequestOptions.builder().
+                            setStripeAccount(connectedAccountKey).build();
+                    Subscription sub = Subscription.retrieve(subscription.getSubscriptionId(),
+                            subRequestOptions);
+                    //get the first subscription item from the array
+                    subscriptionItem = sub.getItems().getData().get(0);
+                    //check whether the billing plan is Usage Based.
+                    if (subscriptionItem.getPlan().getUsageType().equals(
+                            StripeMonetizationConstants.METERED_PLAN)) {
+                        flag++;
+                        Map<String, Object> usageRecordParams = new HashMap<String, Object>();
+                        usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
+                        //provide the timesatmp in second format
+                        usageRecordParams.put(StripeMonetizationConstants.TIMESTAMP,
+                                getTimestamp(currentDate) / 1000);
+                        usageRecordParams.put(StripeMonetizationConstants.ACTION,
+                                StripeMonetizationConstants.INCREMENT);
+                        RequestOptions usageRequestOptions = RequestOptions.builder().
+                                setStripeAccount(connectedAccountKey).setIdempotencyKey(subscriptionItem.getId()
+                                + lastPublishInfo.getLastPublishTime() + requestCount).build();
+                        UsageRecord usageRecord = UsageRecord.createOnSubscriptionItem(
+                                subscriptionItem.getId(), usageRecordParams, usageRequestOptions);
+                        //checks whether the usage record is published successfully
+                        if (usageRecord.getId() != null) {
+                            counter++;
+                            if (log.isDebugEnabled()) {
+                                String msg = "Usage for " + apiName + " by Application with ID " + applicationId
+                                        + " is successfully published to Stripe";
+                                log.debug(msg);
                             }
                         }
                     }
+                } catch (StripeMonetizationException e) {
+                    String errorMessage = "Unable to Publish usage Record to Billing Engine";
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage, e);
+                } catch (StripeException e) {
+                    String errorMessage = "Unable to Publish usage Record";
+                    //throw MonetizationException as it will be logged and handled by the caller
+                    throw new MonetizationException(errorMessage, e);
                 }
             }
-        } catch (StripeMonetizationException e) {
-            String errorMessage = "Unable to Publish usage Record to Billing Engine";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
-        } catch (StripeException e) {
-            String errorMessage = "Unable to Publish usage Record";
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
         }
-        // Flag equals counter when all the records are published successfully
+
+        //Flag equals counter when all the records are published successfully
         if (flag == counter) {
             try {
-                //last publish time will be updated only if all the records are successfull
+                //last publish time will be updatedr only if all the records are successfull
                 lastPublishInfo.setLastPublishTime(currentTimestamp);
                 lastPublishInfo.setState(StripeMonetizationConstants.COMPLETED);
                 lastPublishInfo.setStatus(StripeMonetizationConstants.SUCCESSFULL);
@@ -939,6 +1031,9 @@ public class StripeMonetizationImpl implements Monetization {
             String errorMessage = "Failed to get billing engine data for subscription : " + subscriptionUUID;
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage, e);
+        } catch (SQLException e) {
+            String errorMessage = "Error while retrieving the API ID";
+            throw new MonetizationException(errorMessage, e);
         }
         return billingEngineUsageData;
     }
@@ -1123,4 +1218,32 @@ public class StripeMonetizationImpl implements Monetization {
         }
         return time;
     }
+
+    public List<API> getAllAPIs(String tenantDomain, String username) throws APIManagementException {
+        Properties persistenceProperties = new Properties();
+        APIPersistence apiPersistenceInstance =  PersistenceManager.getPersistenceInstance(persistenceProperties);
+        List<API> apiSortedList = new ArrayList<API>();
+        Organization org = new Organization(tenantDomain);
+        String[] roles = APIUtil.getFilteredUserRoles(username);
+        Map<String, Object> properties = APIUtil.getUserProperties(username);
+        UserContext userCtx = new UserContext(username, org, properties, roles);
+        try {
+            PublisherAPISearchResult searchAPIs = apiPersistenceInstance.searchAPIsForPublisher(org, "", 0,
+                    Integer.MAX_VALUE, userCtx);
+
+            if (searchAPIs != null) {
+                List<PublisherAPIInfo> list = searchAPIs.getPublisherAPIInfoList();
+                for (PublisherAPIInfo publisherAPIInfo : list) {
+                    API mappedAPI = APIMapper.INSTANCE.toApi(publisherAPIInfo);
+                    apiSortedList.add(mappedAPI);
+                }
+            }
+        } catch (APIPersistenceException e) {
+            throw new APIManagementException("Error while searching the api ", e);
+        }
+
+        Collections.sort(apiSortedList, new APINameComparator());
+        return apiSortedList;
+    }
+
 }
