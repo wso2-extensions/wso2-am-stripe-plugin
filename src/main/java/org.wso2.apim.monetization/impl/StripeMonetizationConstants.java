@@ -120,7 +120,7 @@ public class StripeMonetizationConstants {
     public static final String ACTION = "action";
     public static final String INCREMENT = "increment";
     public static final String TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
-    public static final String TIMEZONE_FORMAT = ".023+01:00";
+    public static final String TIMEZONE_FORMAT = ".023+05:30";
     public static final String QUANTITY = "quantity";
     public static final String TIMESTAMP = "timestamp";
     public static final String TIME_ZONE = "UTC";
@@ -144,7 +144,7 @@ public class StripeMonetizationConstants {
     public static final String API_USAGE_BY_APP_FILTER = "successAPIUsageByAppFilter";
     public static final String API_NAME = "apiName";
     public static final String API_VERSION = "apiVersion";
-    public static final String TENANT_DOMAIN = "tenantDomain";
+    public static final String TENANT_DOMAIN = "apiCreatorTenantDomain";
     public static final String COUNT = "count";
     public static final String APPLICATION_NAME = "applicationName";
     public static final String APPLICATION_OWNER = "applicationOwner";
