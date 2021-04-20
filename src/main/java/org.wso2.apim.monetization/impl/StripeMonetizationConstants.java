@@ -120,7 +120,7 @@ public class StripeMonetizationConstants {
     public static final String ACTION = "action";
     public static final String INCREMENT = "increment";
     public static final String TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
-    public static final String TIMEZONE_FORMAT = ".023+05:30";
+    public static final String TIMEZONE_FORMAT = ".023+01:00";
     public static final String QUANTITY = "quantity";
     public static final String TIMESTAMP = "timestamp";
     public static final String TIME_ZONE = "UTC";
