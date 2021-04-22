@@ -140,7 +140,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         try {
             publisherAPI = apiPersistenceInstance.getPublisherAPI(org, api.getUUID());
         } catch (APIPersistenceException e) {
-            e.printStackTrace();
+            throw new WorkflowException("Failed to retrieve the API of UUID: " +api.getUUID(), e);
         }
         Map<String, String> monetizationProperties = new Gson().fromJson(publisherAPI.getMonetizationProperties().toString(),
                 HashMap.class);
