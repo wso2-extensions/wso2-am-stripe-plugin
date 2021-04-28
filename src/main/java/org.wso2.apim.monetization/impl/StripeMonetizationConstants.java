@@ -148,4 +148,5 @@ public class StripeMonetizationConstants {
     public static final String COUNT = "count";
     public static final String APPLICATION_NAME = "applicationName";
     public static final String APPLICATION_OWNER = "applicationOwner";
+    public static final String GET_USAGE_BY_APPLICATION = "getSuccessAPIsUsageByApplications";
 }
