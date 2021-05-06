@@ -47,11 +47,18 @@ import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO;
 import org.wso2.carbon.apimgt.impl.dto.WorkflowDTO;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
+import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.impl.workflow.GeneralWorkflowResponse;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowConstants;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowExecutor;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowStatus;
+import org.wso2.carbon.apimgt.persistence.APIPersistence;
+import org.wso2.carbon.apimgt.persistence.PersistenceManager;
+import org.wso2.carbon.apimgt.persistence.dto.Organization;
+import org.wso2.carbon.apimgt.persistence.dto.PublisherAPI;
+import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
@@ -61,6 +68,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * worrkflow executor for stripe based subscription create action
@@ -69,6 +77,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
 
     private static final Log log = LogFactory.getLog(StripeSubscriptionCreationWorkflowExecutor.class);
     StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
+    APIPersistence apiPersistenceInstance;
 
     @Override
     public String getWorkflowType() {
@@ -119,10 +128,21 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
         subWorkFlowDTO = (SubscriptionWorkflowDTO) workflowDTO;
 
+        Properties properties = new Properties();
+        properties.put(APIConstants.ALLOW_MULTIPLE_STATUS, APIUtil.isAllowDisplayAPIsWithMultipleStatus());
+        apiPersistenceInstance = PersistenceManager.getPersistenceInstance(properties);
+
         //read the platform account key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
         String connectedAccountKey = StringUtils.EMPTY;
-        Map<String, String> monetizationProperties = new Gson().fromJson(api.getMonetizationProperties().toString(),
+        Organization org = new Organization(workflowDTO.getTenantDomain());
+        PublisherAPI publisherAPI = null;
+        try {
+            publisherAPI = apiPersistenceInstance.getPublisherAPI(org, api.getUUID());
+        } catch (APIPersistenceException e) {
+            throw new WorkflowException("Failed to retrieve the API of UUID: " +api.getUUID(), e);
+        }
+        Map<String, String> monetizationProperties = new Gson().fromJson(publisherAPI.getMonetizationProperties().toString(),
                 HashMap.class);
         if (MapUtils.isNotEmpty(monetizationProperties) &&
                 monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
@@ -159,7 +179,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
                         requestOptions, subWorkFlowDTO);
             }
             //creating Subscriptions
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), null);
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), APIMgtDBUtil.getConnection());
             String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
             createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO);
         } catch (APIManagementException e) {
