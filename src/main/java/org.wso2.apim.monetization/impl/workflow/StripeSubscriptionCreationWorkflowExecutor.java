@@ -89,12 +89,17 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     @Override
     public WorkflowResponse execute(WorkflowDTO workflowDTO) throws WorkflowException {
 
+        SubscriptionWorkflowDTO subsWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
+        workflowDTO.setProperties("apiName", subsWorkflowDTO.getApiName());
+        workflowDTO.setProperties("apiVersion", subsWorkflowDTO.getApiVersion());
+        workflowDTO.setProperties("subscriber", subsWorkflowDTO.getSubscriber());
+        workflowDTO.setProperties("applicationName", subsWorkflowDTO.getApplicationName());
         super.execute(workflowDTO);
         workflowDTO.setStatus(WorkflowStatus.APPROVED);
         WorkflowResponse workflowResponse = complete(workflowDTO);
         super.publishEvents(workflowDTO);
 
-        return new GeneralWorkflowResponse();
+        return workflowResponse;
     }
 
     /**
@@ -474,6 +479,8 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     @Override
     public WorkflowResponse complete(WorkflowDTO workflowDTO) throws WorkflowException {
 
+        workflowDTO.setUpdatedTime(System.currentTimeMillis());
+        super.complete(workflowDTO);
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
         try {
             apiMgtDAO.updateSubscriptionStatus(Integer.parseInt(workflowDTO.getWorkflowReference()),
