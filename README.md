@@ -10,6 +10,7 @@ This is a sample implementation to support usage based billing for a API subscri
 | :-------------: | :---------------:|
 | [1.0.x](https://github.com/wso2-extensions/wso2-am-stripe-plugin/tree/v1.0.0) | API Manager 3.0.0 
 | [1.1.x](https://github.com/wso2-extensions/wso2-am-stripe-plugin/tree/v1.1.1) | API Manager 3.1.0
+| [1.1.x](https://github.com/wso2-extensions/wso2-am-stripe-plugin/tree/v1.1.2) | API Manager 3.2.0
 | [1.2.x](https://github.com/wso2-extensions/wso2-am-stripe-plugin/tree/v1.2.0) | API Manager 4.0.0  
 
 
