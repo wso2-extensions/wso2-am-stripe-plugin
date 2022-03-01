@@ -78,6 +78,7 @@ import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.nio.charset.Charset;
 import java.sql.Connection;
@@ -445,7 +446,7 @@ public class StripeMonetizationImpl implements Monetization {
         String apiVersion = api.getId().getVersion();
         String apiProvider = api.getId().getProviderName();
         try {
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), APIMgtDBUtil.getConnection());
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
             String billingProductIdForApi = getBillingProductIdForApi(apiId);
             //create billing engine product if it does not exist
             if (StringUtils.isEmpty(billingProductIdForApi)) {
@@ -545,7 +546,7 @@ public class StripeMonetizationImpl implements Monetization {
         }
         try {
             String apiName = api.getId().getApiName();
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), APIMgtDBUtil.getConnection());
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
             String billingProductIdForApi = getBillingProductIdForApi(apiId);
             //no product in the billing engine, so return
             if (StringUtils.isBlank(billingProductIdForApi)) {
@@ -602,7 +603,7 @@ public class StripeMonetizationImpl implements Monetization {
         try {
             String apiName = api.getId().getApiName();
             Connection con = APIMgtDBUtil.getConnection();
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), con);
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
             //get billing engine product ID for that API
             String billingProductIdForApi = getBillingProductIdForApi(apiId);
             if (StringUtils.isEmpty(billingProductIdForApi)) {
@@ -636,6 +637,7 @@ public class StripeMonetizationImpl implements Monetization {
     public boolean publishMonetizationUsageRecords(MonetizationUsagePublishInfo lastPublishInfo)
             throws MonetizationException {
 
+        String apiUuid = null;
         String apiName = null;
         String apiVersion = null;
         String tenantDomain = null;
@@ -683,6 +685,7 @@ public class StripeMonetizationImpl implements Monetization {
             String key = entry.getKey();
             ArrayList<LinkedTreeMap<String, String>> apiUsageDataCollection = entry.getValue();
             for (LinkedTreeMap<String, String> apiUsageData : apiUsageDataCollection) {
+                apiUuid = apiUsageData.get(StripeMonetizationConstants.API_UUID);
                 apiName = apiUsageData.get(StripeMonetizationConstants.API_NAME);
                 apiVersion = apiUsageData.get(StripeMonetizationConstants.API_VERSION);
                 tenantDomain = apiUsageData.get(StripeMonetizationConstants.TENANT_DOMAIN);
@@ -693,13 +696,14 @@ public class StripeMonetizationImpl implements Monetization {
                     apiProvider = apiMgtDAO.getAPIProviderByNameAndVersion(apiName, apiVersion, tenantDomain);
                 } catch (APIManagementException e) {
                     throw new MonetizationException("Error while retrieving Application Id for " +
-                            "Applictaion " + applicationName, e);
+                            "Application " + applicationName, e);
                 }
                 requestCount = Long.parseLong(apiUsageData.get(StripeMonetizationConstants.COUNT));
                 try {
                     //get the billing engine subscription details
-                    MonetizedSubscription subscription = stripeMonetizationDAO.getMonetizedSubscription(apiName,
-                            apiVersion, apiProvider, applicationId, tenantDomain);
+                    MonetizedSubscription subscription = stripeMonetizationDAO
+                            .getMonetizedSubscription(apiUuid, apiName, apiVersion, apiProvider, applicationId,
+                                    tenantDomain);
                     if (subscription.getSubscriptionId() != null) {
                         try {
                             //start the tenant flow to get the platform key
@@ -723,9 +727,8 @@ public class StripeMonetizationImpl implements Monetization {
                         PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
                                 tenantDomain, true);
                         apiProvider = APIUtil.replaceEmailDomain(apiProvider);
-                        APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
                         APIProvider apiProvider1 = APIManagerFactory.getInstance().getAPIProvider(apiProvider);
-                        API api = apiProvider1.getAPI(identifier);
+                        API api = apiProvider1.getAPIbyUUID(apiUuid, tenantDomain);
                         Map<String, String> monetizationProperties = new Gson().fromJson(
                                 api.getMonetizationProperties().toString(), HashMap.class);
                         //get api publisher's stripe key (i.e - connected account key) from monetization
@@ -868,7 +871,15 @@ public class StripeMonetizationImpl implements Monetization {
         try {
             Properties properties = new Properties();
             properties.put(APIConstants.ALLOW_MULTIPLE_STATUS, APIUtil.isAllowDisplayAPIsWithMultipleStatus());
-            apiPersistenceInstance = PersistenceManager.getPersistenceInstance(properties);
+            Map<String, String> configMap = new HashMap<>();
+            Map<String, String> configs = APIManagerConfiguration.getPersistenceProperties();
+            if (configs != null && !configs.isEmpty()) {
+                configMap.putAll(configs);
+            }
+            configMap.put(APIConstants.ALLOW_MULTIPLE_STATUS,
+                    Boolean.toString(APIUtil.isAllowDisplayAPIsWithMultipleStatus()));
+
+            apiPersistenceInstance = PersistenceManager.getPersistenceInstance(configMap, properties);
             List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
             for (Tenant tenant : tenants) {
                 tenantDomains.add(tenant.getDomain());
@@ -876,7 +887,12 @@ public class StripeMonetizationImpl implements Monetization {
                     PrivilegedCarbonContext.startTenantFlow();
                     PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(
                             tenant.getDomain(), true);
-                    APIProvider apiProviderNew = RestApiCommonUtil.getProvider(APIUtil.getAdminUsername());
+                    String tenantAdminUsername = APIUtil.getAdminUsername();
+                    if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenant.getDomain())) {
+                        tenantAdminUsername =
+                                APIUtil.getAdminUsername() + StripeMonetizationConstants.AT + tenant.getDomain();
+                    }
+                    APIProvider apiProviderNew = RestApiCommonUtil.getProvider(tenantAdminUsername);
                     List<API> allowedAPIs = apiProviderNew.getAllAPIs();
                     Organization org = new Organization(tenant.getDomain());
                     for (API api : allowedAPIs) {
@@ -939,7 +955,7 @@ public class StripeMonetizationImpl implements Monetization {
             HashMap monetizationDataMap;
             int apiId;
             if (apiIdentifier != null) {
-                api = apiProvider.getAPI(apiIdentifier);
+                api = apiProvider.getAPIbyUUID(apiIdentifier.getUUID(), apiIdentifier.getOrganization());
                 apiName = apiIdentifier.getApiName();
                 if (api.getMonetizationProperties() == null) {
                     String errorMessage = "Monetization properties are empty for : " + apiName;
@@ -952,7 +968,7 @@ public class StripeMonetizationImpl implements Monetization {
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
-                apiId = ApiMgtDAO.getInstance().getAPIID(apiIdentifier, APIMgtDBUtil.getConnection());
+                apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
             } else {
                 apiProductIdentifier = subscribedAPI.getProductId();
                 apiProduct = apiProvider.getAPIProduct(apiProductIdentifier);
@@ -1104,13 +1120,15 @@ public class StripeMonetizationImpl implements Monetization {
         Map<String, String> revenueData = new HashMap<String, String>();
         try {
             //get all subscriptions for the API
-            List<SubscribedAPI> apiUsages = apiProvider.getAPIUsageByAPIId(apiIdentifier);
+            List<SubscribedAPI> apiUsages = apiProvider.getAPIUsageByAPIId(api.getUuid(),
+                    api.getId().getOrganization());
             for (SubscribedAPI subscribedAPI : apiUsages) {
                 //get subscription UUID for each subscription
                 int subscriptionId = subscribedAPI.getSubscriptionId();
                 String subscriptionUUID = stripeMonetizationDAO.getSubscriptionUUID(subscriptionId);
                 //get revenue for each subscription and add them
-                Map<String, String> billingEngineUsageData = getCurrentUsageForSubscription(subscriptionUUID, apiProvider);
+                Map<String, String> billingEngineUsageData = getCurrentUsageForSubscription(subscriptionUUID,
+                        apiProvider);
                 revenueData.put("Revenue for subscription ID : " + subscriptionId,
                         billingEngineUsageData.get("amount_due"));
             }
@@ -1136,39 +1154,23 @@ public class StripeMonetizationImpl implements Monetization {
     private String getStripePlatformAccountKey(String tenantDomain) throws StripeMonetizationException {
 
         try {
-            int tenantId = ServiceReferenceHolder.getInstance().getRealmService().getTenantManager().
-                    getTenantId(tenantDomain);
-            Registry configRegistry = ServiceReferenceHolder.getInstance().getRegistryService().
-                    getConfigSystemRegistry(tenantId);
-            if (configRegistry.resourceExists(APIConstants.API_TENANT_CONF_LOCATION)) {
-                Resource resource = configRegistry.get(APIConstants.API_TENANT_CONF_LOCATION);
-                String tenantConfContent = new String((byte[]) resource.getContent(), Charset.defaultCharset());
-                if (StringUtils.isBlank(tenantConfContent)) {
-                    String errorMessage = "Tenant configuration for tenant " + tenantDomain +
-                            " cannot be empty when configuring monetization.";
-                    throw new StripeMonetizationException(errorMessage);
+            //get the stripe key of platform account from  tenant conf json file
+            JSONObject tenantConfig = APIUtil.getTenantConfig(tenantDomain);
+            if (tenantConfig.containsKey(StripeMonetizationConstants.MONETIZATION_INFO)) {
+                JSONObject monetizationInfo = (JSONObject) tenantConfig
+                        .get(StripeMonetizationConstants.MONETIZATION_INFO);
+                if (monetizationInfo.containsKey(StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY)) {
+                    String stripePlatformAccountKey = monetizationInfo
+                            .get(StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY).toString();
+                    if (StringUtils.isBlank(stripePlatformAccountKey)) {
+                        String errorMessage = "Stripe platform account key is empty for tenant : " + tenantDomain;
+                        throw new StripeMonetizationException(errorMessage);
+                    }
+                    return stripePlatformAccountKey;
                 }
-                //get the stripe key of platform account from  tenant conf json file
-                JSONObject tenantConfig = (JSONObject) new JSONParser().parse(tenantConfContent);
-                JSONObject monetizationInfo = (JSONObject) tenantConfig.get(StripeMonetizationConstants.MONETIZATION_INFO);
-                String stripePlatformAccountKey = monetizationInfo.get
-                        (StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY).toString();
-                if (StringUtils.isBlank(stripePlatformAccountKey)) {
-                    String errorMessage = "Stripe platform account key is empty for tenant : " + tenantDomain;
-                    throw new StripeMonetizationException(errorMessage);
-                }
-                return stripePlatformAccountKey;
             }
-        } catch (ParseException e) {
-            String errorMessage = "Error while parsing tenant configuration in tenant : " + tenantDomain;
-            log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage, e);
-        } catch (UserStoreException e) {
-            String errorMessage = "Failed to get the corresponding tenant configurations for tenant :  " + tenantDomain;
-            log.error(errorMessage);
-            throw new StripeMonetizationException(errorMessage, e);
-        } catch (RegistryException e) {
-            String errorMessage = "Failed to get the configuration registry for tenant :  " + tenantDomain;
+        } catch (APIManagementException e) {
+            String errorMessage = "Failed to get the configuration for tenant from DB:  " + tenantDomain;
             log.error(errorMessage);
             throw new StripeMonetizationException(errorMessage, e);
         }
@@ -1273,7 +1275,15 @@ public class StripeMonetizationImpl implements Monetization {
 
     public List<API> getAllAPIs(String tenantDomain, String username) throws APIManagementException {
         Properties persistenceProperties = new Properties();
-        APIPersistence apiPersistenceInstance =  PersistenceManager.getPersistenceInstance(persistenceProperties);
+        Map<String, String> configMap = new HashMap<>();
+        Map<String, String> configs = APIManagerConfiguration.getPersistenceProperties();
+        if (configs != null && !configs.isEmpty()) {
+            configMap.putAll(configs);
+        }
+        configMap.put(APIConstants.ALLOW_MULTIPLE_STATUS,
+                Boolean.toString(APIUtil.isAllowDisplayAPIsWithMultipleStatus()));
+        APIPersistence apiPersistenceInstance = PersistenceManager
+                .getPersistenceInstance(configMap, persistenceProperties);
         List<API> apiSortedList = new ArrayList<API>();
         Organization org = new Organization(tenantDomain);
         String[] roles = APIUtil.getFilteredUserRoles(username);
@@ -1281,7 +1291,7 @@ public class StripeMonetizationImpl implements Monetization {
         UserContext userCtx = new UserContext(username, org, properties, roles);
         try {
             PublisherAPISearchResult searchAPIs = apiPersistenceInstance.searchAPIsForPublisher(org, "", 0,
-                    Integer.MAX_VALUE, userCtx);
+                    Integer.MAX_VALUE, userCtx, null, null);
 
             if (searchAPIs != null) {
                 List<PublisherAPIInfo> list = searchAPIs.getPublisherAPIInfoList();

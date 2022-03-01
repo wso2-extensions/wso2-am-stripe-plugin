@@ -143,10 +143,12 @@ public class StripeMonetizationConstants {
     public static final String TIME_FILTER = "timeFilter";
     public static final String API_USAGE_BY_APP_FILTER = "successAPIUsageByAppFilter";
     public static final String API_NAME = "apiName";
+    public static final String API_UUID = "apiId";
     public static final String API_VERSION = "apiVersion";
     public static final String TENANT_DOMAIN = "apiCreatorTenantDomain";
     public static final String COUNT = "count";
     public static final String APPLICATION_NAME = "applicationName";
     public static final String APPLICATION_OWNER = "applicationOwner";
     public static final String GET_USAGE_BY_APPLICATION = "getSuccessAPIsUsageByApplications";
+    public static final String AT = "@";
 }

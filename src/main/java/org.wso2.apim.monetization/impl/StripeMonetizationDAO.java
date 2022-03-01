@@ -628,11 +628,12 @@ public class StripeMonetizationDAO {
      * @param tenandId         Id of the tenant
      * @param sharedCustomerId Id of the shared customer
      * @param subscriptionId   Id of the Billing Engine Subscriptions
+     * @param apiUuid          UUID of the API
      * @return Id of the customer record in the database
      * @throws StripeMonetizationException If Failed To add Billing Engine Shared Customer details
      */
-    public void addBESubscription(APIIdentifier identifier, int applicationId, int tenandId,
-                                  int sharedCustomerId, String subscriptionId) throws StripeMonetizationException {
+    public void addBESubscription(APIIdentifier identifier, int applicationId, int tenandId, int sharedCustomerId,
+            String subscriptionId, String apiUuid) throws StripeMonetizationException {
 
         Connection conn = null;
         ResultSet rs = null;
@@ -642,7 +643,7 @@ public class StripeMonetizationDAO {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
             try {
-                apiId = apiMgtDAO.getAPIID(identifier, conn);
+                apiId = apiMgtDAO.getAPIID(apiUuid, conn);
             } catch (APIManagementException e) {
                 String errorMessage = "Failed to get the ID of the API " + identifier.getApiName();
                 log.error(errorMessage);
@@ -779,6 +780,7 @@ public class StripeMonetizationDAO {
     /**
      * Get billing engine Subscription info
      *
+     * @param apiUuid       UUID of the API
      * @param apiName       api name
      * @param apiVersion    api version
      * @param apiProvider   api provider
@@ -787,9 +789,8 @@ public class StripeMonetizationDAO {
      * @return MonetizationSubscription info of Billing Engine Subscription
      * @throws StripeMonetizationException If Failed To get Billing Engine Subscription details
      */
-    public MonetizedSubscription getMonetizedSubscription(String apiName, String apiVersion, String apiProvider,
-                                                          int applicationId, String tenantDomain)
-            throws StripeMonetizationException {
+    public MonetizedSubscription getMonetizedSubscription(String apiUuid, String apiName, String apiVersion,
+            String apiProvider, int applicationId, String tenantDomain) throws StripeMonetizationException {
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -797,12 +798,11 @@ public class StripeMonetizationDAO {
         int apiId;
         MonetizedSubscription monetizedSubscription = new MonetizedSubscription();
         int tenantId = APIUtil.getTenantIdFromTenantDomain(tenantDomain);
-        APIIdentifier identifier = new APIIdentifier(apiProvider, apiName, apiVersion);
         String sqlQuery = StripeMonetizationConstants.GET_BE_SUBSCRIPTION_SQL;
         try {
             conn = APIMgtDBUtil.getConnection();
             try {
-                apiId = apiMgtDAO.getAPIID(identifier, conn);
+                apiId = apiMgtDAO.getAPIID(apiUuid, conn);
             } catch (APIManagementException e) {
                 String errorMessgae = "Failed to get ID for API : " + apiName;
                 log.error(errorMessgae);
