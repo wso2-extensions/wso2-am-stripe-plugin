@@ -71,7 +71,6 @@ import org.wso2.carbon.apimgt.persistence.dto.PublisherAPISearchResult;
 import org.wso2.carbon.apimgt.persistence.dto.UserContext;
 import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
 import org.wso2.carbon.apimgt.persistence.mapper.APIMapper;
-import org.wso2.carbon.apimgt.rest.api.common.RestApiCommonUtil;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
@@ -702,7 +701,7 @@ public class StripeMonetizationImpl implements Monetization {
                 try {
                     //get the billing engine subscription details
                     MonetizedSubscription subscription = stripeMonetizationDAO
-                            .getMonetizedSubscription(apiUuid, apiName, apiVersion, apiProvider, applicationId,
+                            .getMonetizedSubscription(apiUuid, apiName, applicationId,
                                     tenantDomain);
                     if (subscription.getSubscriptionId() != null) {
                         try {
@@ -892,7 +891,7 @@ public class StripeMonetizationImpl implements Monetization {
                         tenantAdminUsername =
                                 APIUtil.getAdminUsername() + StripeMonetizationConstants.AT + tenant.getDomain();
                     }
-                    APIProvider apiProviderNew = RestApiCommonUtil.getProvider(tenantAdminUsername);
+                    APIProvider apiProviderNew = APIManagerFactory.getInstance().getAPIProvider(tenantAdminUsername);
                     List<API> allowedAPIs = apiProviderNew.getAllAPIs();
                     Organization org = new Organization(tenant.getDomain());
                     for (API api : allowedAPIs) {

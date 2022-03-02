@@ -156,7 +156,6 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
             //get the stripe subscription id
             monetizedSubscription = stripeMonetizationDAO
                     .getMonetizedSubscription(api.getUuid(), subWorkflowDTO.getApiName(),
-                            subWorkflowDTO.getApiVersion(), subWorkflowDTO.getApiProvider(),
                             subWorkflowDTO.getApplicationId(), subWorkflowDTO.getTenantDomain());
         } catch (StripeMonetizationException ex) {
             String errorMessage = "Could not retrieve monetized subscription info for : "
@@ -228,7 +227,6 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
             //get the stripe subscription id
             monetizedSubscription = stripeMonetizationDAO
                     .getMonetizedSubscription(apiProduct.getUuid(), subWorkflowDTO.getApiName(),
-                            subWorkflowDTO.getApiVersion(), subWorkflowDTO.getApiProvider(),
                             subWorkflowDTO.getApplicationId(), subWorkflowDTO.getTenantDomain());
         } catch (StripeMonetizationException ex) {
             String errorMessage = "Could not retrieve monetized subscription info for : "
