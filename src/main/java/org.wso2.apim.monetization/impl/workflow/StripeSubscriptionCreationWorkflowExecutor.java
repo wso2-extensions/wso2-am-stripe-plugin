@@ -43,6 +43,7 @@ import org.wso2.carbon.apimgt.api.model.APIIdentifier;
 import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.api.model.Subscriber;
 import org.wso2.carbon.apimgt.impl.APIConstants;
+import org.wso2.carbon.apimgt.impl.APIManagerConfiguration;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO;
 import org.wso2.carbon.apimgt.impl.dto.WorkflowDTO;
@@ -135,7 +136,14 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
 
         Properties properties = new Properties();
         properties.put(APIConstants.ALLOW_MULTIPLE_STATUS, APIUtil.isAllowDisplayAPIsWithMultipleStatus());
-        apiPersistenceInstance = PersistenceManager.getPersistenceInstance(properties);
+        Map<String, String> configMap = new HashMap<>();
+        Map<String, String> configs = APIManagerConfiguration.getPersistenceProperties();
+        if (configs != null && !configs.isEmpty()) {
+            configMap.putAll(configs);
+        }
+        configMap.put(APIConstants.ALLOW_MULTIPLE_STATUS,
+                Boolean.toString(APIUtil.isAllowDisplayAPIsWithMultipleStatus()));
+        apiPersistenceInstance = PersistenceManager.getPersistenceInstance(configMap, properties);
 
         //read the platform account key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
@@ -184,9 +192,9 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
                         requestOptions, subWorkFlowDTO);
             }
             //creating Subscriptions
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getId(), APIMgtDBUtil.getConnection());
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
             String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
-            createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO);
+            createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO, api.getUuid());
         } catch (APIManagementException e) {
             String errorMessage = "Could not monetize subscription for API : " + subWorkFlowDTO.getApiName()
                     + " by Application : " + subWorkFlowDTO.getApplicationName();
@@ -260,7 +268,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             //creating Subscriptions
             int apiId = ApiMgtDAO.getInstance().getAPIProductId(apiProduct.getId());
             String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
-            createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO);
+            createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO, apiProduct.getUuid());
         } catch (APIManagementException e) {
             String errorMessage = "Could not monetize subscription for : " + subWorkFlowDTO.getApiName()
                     + " by application : " + subWorkFlowDTO.getApplicationName();
@@ -285,32 +293,25 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     private String getPlatformAccountKey(int tenantId) throws WorkflowException {
 
         String stripePlatformAccountKey = null;
+        String tenantDomain = APIUtil.getTenantDomainFromTenantId(tenantId);
         try {
-            Registry configRegistry = ServiceReferenceHolder.getInstance().getRegistryService().getConfigSystemRegistry(
-                    tenantId);
-            if (configRegistry.resourceExists(APIConstants.API_TENANT_CONF_LOCATION)) {
-                Resource resource = configRegistry.get(APIConstants.API_TENANT_CONF_LOCATION);
-                String content = new String((byte[]) resource.getContent(), Charset.defaultCharset());
-
-                if (StringUtils.isBlank(content)) {
-                    String errorMessage = "Tenant configuration cannot be empty when configuring monetization.";
-                    throw new WorkflowException(errorMessage);
-                }
-                //get the stripe key of patform account from tenant conf file
-                JSONObject tenantConfig = (JSONObject) new JSONParser().parse(content);
-                JSONObject monetizationInfo = (JSONObject) tenantConfig.get(
-                        StripeMonetizationConstants.MONETIZATION_INFO);
-                stripePlatformAccountKey = monetizationInfo.get(
-                        StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY).toString();
-
-                if (StringUtils.isBlank(stripePlatformAccountKey)) {
-                    throw new WorkflowException("stripePlatformAccountKey is empty!!!");
+            //get the stripe key of platform account from  tenant conf json file
+            JSONObject tenantConfig = APIUtil.getTenantConfig(tenantDomain);
+            if (tenantConfig.containsKey(StripeMonetizationConstants.MONETIZATION_INFO)) {
+                JSONObject monetizationInfo = (JSONObject) tenantConfig
+                        .get(StripeMonetizationConstants.MONETIZATION_INFO);
+                if (monetizationInfo.containsKey(StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY)) {
+                    stripePlatformAccountKey = monetizationInfo
+                            .get(StripeMonetizationConstants.BILLING_ENGINE_PLATFORM_ACCOUNT_KEY).toString();
+                    if (StringUtils.isBlank(stripePlatformAccountKey)) {
+                        String errorMessage = "Stripe platform account key is empty for tenant : " + tenantDomain;
+                        throw new WorkflowException(errorMessage);
+                    }
+                    return stripePlatformAccountKey;
                 }
             }
-        } catch (RegistryException ex) {
-            throw new WorkflowException("Could not get all registry objects : ", ex);
-        } catch (org.json.simple.parser.ParseException ex) {
-            throw new WorkflowException("Could not get Stripe Platform key : ", ex);
+        } catch (APIManagementException e) {
+            throw new WorkflowException("Failed to get the configuration for tenant from DB:  " + tenantDomain, e);
         }
         return stripePlatformAccountKey;
     }
@@ -396,7 +397,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
      * @throws WorkflowException
      */
     public void createMonetizedSubscriptions(String planId, MonetizationSharedCustomer sharedCustomer,
-                                             RequestOptions requestOptions, SubscriptionWorkflowDTO subWorkFlowDTO)
+            RequestOptions requestOptions, SubscriptionWorkflowDTO subWorkFlowDTO, String apiUuid)
             throws WorkflowException {
 
         StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
@@ -413,7 +414,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             subParams.put(StripeMonetizationConstants.CUSTOMER, sharedCustomer.getSharedCustomerId());
             subParams.put(StripeMonetizationConstants.ITEMS, items);
             try {
-                //create a subscritpion in stripe under the API Providers Connected Account
+                //create a subscription in stripe under the API Providers Connected Account
                 subscription = Subscription.create(subParams, requestOptions);
             } catch (StripeException ex) {
                 String errorMsg = "Error when adding a subscription in Stripe for Application : " +
@@ -423,7 +424,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
             }
             try {
                 stripeMonetizationDAO.addBESubscription(identifier, subWorkFlowDTO.getApplicationId(),
-                        subWorkFlowDTO.getTenantId(), sharedCustomer.getId(), subscription.getId());
+                        subWorkFlowDTO.getTenantId(), sharedCustomer.getId(), subscription.getId(), apiUuid);
             } catch (StripeMonetizationException e) {
                 //delete the subscription in Stripe, if the entry to database fails in API Manager
                 subscription.cancel((Map<String, Object>) null, requestOptions);

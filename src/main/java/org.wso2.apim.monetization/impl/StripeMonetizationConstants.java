@@ -61,7 +61,7 @@ public class StripeMonetizationConstants {
             " INSERT" +
                     " INTO AM_MONETIZATION_SUBSCRIPTIONS (SUBSCRIBED_API_ID, SUBSCRIBED_APPLICATION_ID," +
                     " TENANT_ID, SHARED_CUSTOMER_ID, SUBSCRIPTION_ID)" +
-                    " VALUES (?,?,?,?,?)";
+                    " VALUES ((SELECT API_ID FROM AM_API WHERE API_UUID = ?),?,?,?,?)";
 
     public static final String GET_BE_PLATFORM_CUSTOMER_SQL =
             "SELECT" +
@@ -82,7 +82,9 @@ public class StripeMonetizationConstants {
                     " ID, SUBSCRIPTION_ID" +
                     " FROM AM_MONETIZATION_SUBSCRIPTIONS" +
                     " WHERE" +
-                    " SUBSCRIBED_APPLICATION_ID=? AND SUBSCRIBED_API_ID=? AND TENANT_ID=?";
+                    " SUBSCRIBED_APPLICATION_ID=? " +
+                    " AND SUBSCRIBED_API_ID=(SELECT API_ID FROM AM_API WHERE API_UUID=?)" +
+                    " AND TENANT_ID=?";
 
     public static final String DELETE_BE_SUBSCRIPTION_SQL = "DELETE FROM AM_MONETIZATION_SUBSCRIPTIONS WHERE ID=?";
 
@@ -143,10 +145,12 @@ public class StripeMonetizationConstants {
     public static final String TIME_FILTER = "timeFilter";
     public static final String API_USAGE_BY_APP_FILTER = "successAPIUsageByAppFilter";
     public static final String API_NAME = "apiName";
+    public static final String API_UUID = "apiId";
     public static final String API_VERSION = "apiVersion";
     public static final String TENANT_DOMAIN = "apiCreatorTenantDomain";
     public static final String COUNT = "count";
     public static final String APPLICATION_NAME = "applicationName";
     public static final String APPLICATION_OWNER = "applicationOwner";
     public static final String GET_USAGE_BY_APPLICATION = "getSuccessAPIsUsageByApplications";
+    public static final String AT = "@";
 }

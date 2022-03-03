@@ -42,12 +42,12 @@
                 <checksumPolicy>ignore</checksumPolicy>
             </releases>
             <id>wso2-nexus</id>
-            <url>http://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+            <url>https://maven.wso2.org/nexus/content/groups/wso2-public/</url>
         </repository>
     </repositories>
 
     <properties>
-        <carbon.apimgt.version>9.0.17</carbon.apimgt.version>
+        <carbon.apimgt.version>9.20.1</carbon.apimgt.version>
         <commons.lang.version>2.6</commons.lang.version>
         <stripe.version>9.8.0</stripe.version>
     </properties>
