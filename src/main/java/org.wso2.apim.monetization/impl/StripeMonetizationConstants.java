@@ -136,14 +136,18 @@ public class StripeMonetizationConstants {
     public static final String INVOICE_NOW = "invoice_now";
     public static final String CANCELED = "canceled";
     public static final String ANALYTICS_ACCESS_TOKEN_PROP = "Monetization.UsagePublisher.AnalyticsAccessToken";
-    public static final String ANALYTICS_QUERY_API_ENDPOINT_PROP = "Monetization.UsagePublisher." +
-            "AnalyticsQueryAPIEndpoint";
+    public static final String CHOREO_INSIGHT_API_ENDPOINT_PROP = "Monetization.UsagePublisher." +
+            "ChoreoInsightAPIEndpoint";
+    public static final String CHOREO_TOKEN_URL_PROP = "Monetization.UsagePublisher.ChoreoTokenEndpoint";
+    public static final String CHOREO_INSIGHT_APP_CONSUMER_KEY_PROP = "Monetization.UsagePublisher.ChoreoInsightAppConsumerKey";
+    public static final String CHOREO_INSIGHT_APP_CONSUMER_SECRET_PROP = "Monetization.UsagePublisher.ChoreoInsightAppConsumerSecret";
     public static final String FROM = "from";
     public static final String TO = "to";
     public static final String API_ID_COL = "apiIds";
     public static final String TENANT_DOMAIN_COL = "tenantDomains";
     public static final String TIME_FILTER = "timeFilter";
     public static final String API_USAGE_BY_APP_FILTER = "successAPIUsageByAppFilter";
+    public static final String ON_PREM_KEY = "onPremKey";
     public static final String API_NAME = "apiName";
     public static final String API_UUID = "apiId";
     public static final String API_VERSION = "apiVersion";
@@ -152,5 +156,6 @@ public class StripeMonetizationConstants {
     public static final String APPLICATION_NAME = "applicationName";
     public static final String APPLICATION_OWNER = "applicationOwner";
     public static final String GET_USAGE_BY_APPLICATION = "getSuccessAPIsUsageByApplications";
+    public static final String GET_USAGE_BY_APPLICATION_WITH_ON_PREM_KEY = "getSuccessAPIsUsageByApplicationsWithOnPremKey";
     public static final String AT = "@";
 }
