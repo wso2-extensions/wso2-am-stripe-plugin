@@ -138,9 +138,6 @@ public class StripeMonetizationConstants {
     public static final String ANALYTICS_ACCESS_TOKEN_PROP = "Monetization.UsagePublisher.AnalyticsAccessToken";
     public static final String CHOREO_INSIGHT_API_ENDPOINT_PROP = "Monetization.UsagePublisher." +
             "ChoreoInsightAPIEndpoint";
-    public static final String CHOREO_TOKEN_URL_PROP = "Monetization.UsagePublisher.ChoreoTokenEndpoint";
-    public static final String CHOREO_INSIGHT_APP_CONSUMER_KEY_PROP = "Monetization.UsagePublisher.ChoreoInsightAppConsumerKey";
-    public static final String CHOREO_INSIGHT_APP_CONSUMER_SECRET_PROP = "Monetization.UsagePublisher.ChoreoInsightAppConsumerSecret";
     public static final String FROM = "from";
     public static final String TO = "to";
     public static final String API_ID_COL = "apiIds";

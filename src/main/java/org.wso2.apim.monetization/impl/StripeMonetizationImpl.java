@@ -63,7 +63,6 @@ import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.DataHolder;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
-import org.wso2.carbon.apimgt.impl.recommendationmgt.AccessTokenGenerator;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -865,22 +864,13 @@ public class StripeMonetizationImpl implements Monetization {
                     "Endpoint or analytics access token for the the analytics query api is not configured");
         }
 
-        String choreoTokenUrl =
-                config.getFirstProperty(StripeMonetizationConstants.CHOREO_TOKEN_URL_PROP);
-        String insightAppConsumerKey =
-                config.getFirstProperty(StripeMonetizationConstants.CHOREO_INSIGHT_APP_CONSUMER_KEY_PROP);
-        String insightAppConsumerSecret =
-                config.getFirstProperty(StripeMonetizationConstants.CHOREO_INSIGHT_APP_CONSUMER_SECRET_PROP);
-
         String accessToken;
-        if (StringUtils.isEmpty(choreoTokenUrl) || StringUtils.isEmpty(insightAppConsumerKey) ||
-                StringUtils.isEmpty(insightAppConsumerSecret)) {
-            useNewQueryAPI = false;
-            accessToken = onPremKey;
-        } else {
-            accessToken = getAccessTokenGenerator(choreoTokenUrl, insightAppConsumerKey,
-                    insightAppConsumerSecret).getAccessToken();
+        if (DataHolder.getInstance().getMonetizationAccessTokenGenerator() != null) {
+            accessToken = DataHolder.getInstance().getMonetizationAccessTokenGenerator().getAccessToken();
             useNewQueryAPI = true;
+        } else {
+            accessToken = onPremKey;
+            useNewQueryAPI = false;
         }
 
         JSONObject timeFilter = new JSONObject();
@@ -1349,14 +1339,5 @@ public class StripeMonetizationImpl implements Monetization {
 
         Collections.sort(apiSortedList, new APINameComparator());
         return apiSortedList;
-    }
-
-    AccessTokenGenerator getAccessTokenGenerator(String oauthUrl, String consumerKey, String consumerSecret) {
-
-        if (DataHolder.getInstance().getMonetizationAccessTokenGenerator() == null) {
-            DataHolder.getInstance().setMonetizationAccessTokenGenerator(
-                    new AccessTokenGenerator(oauthUrl, null, consumerKey, consumerSecret));
-        }
-        return DataHolder.getInstance().getMonetizationAccessTokenGenerator();
     }
 }
