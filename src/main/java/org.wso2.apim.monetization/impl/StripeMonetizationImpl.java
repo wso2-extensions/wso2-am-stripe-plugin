@@ -61,7 +61,7 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerConfiguration;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
-import org.wso2.carbon.apimgt.impl.internal.DataHolder;
+import org.wso2.carbon.apimgt.impl.internal.MonetizationDataHolder;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
@@ -865,8 +865,8 @@ public class StripeMonetizationImpl implements Monetization {
         }
 
         String accessToken;
-        if (DataHolder.getInstance().getMonetizationAccessTokenGenerator() != null) {
-            accessToken = DataHolder.getInstance().getMonetizationAccessTokenGenerator().getAccessToken();
+        if (MonetizationDataHolder.getInstance().getMonetizationAccessTokenGenerator() != null) {
+            accessToken = MonetizationDataHolder.getInstance().getMonetizationAccessTokenGenerator().getAccessToken();
             useNewQueryAPI = true;
         } else {
             accessToken = onPremKey;
