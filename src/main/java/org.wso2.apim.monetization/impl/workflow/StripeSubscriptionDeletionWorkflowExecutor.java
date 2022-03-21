@@ -114,6 +114,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
         subWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
         Properties properties = new Properties();
         properties.put(APIConstants.ALLOW_MULTIPLE_STATUS, APIUtil.isAllowDisplayAPIsWithMultipleStatus());
+        properties.put(APIConstants.ALLOW_MULTIPLE_VERSIONS, APIUtil.isAllowDisplayMultipleVersions());
         Map<String, String> configMap = new HashMap<>();
         Map<String, String> configs = APIManagerConfiguration.getPersistenceProperties();
         if (configs != null && !configs.isEmpty()) {
