@@ -672,9 +672,12 @@ public class StripeMonetizationImpl implements Monetization {
         String formattedFromDate = fromDate.concat(StripeMonetizationConstants.TIMEZONE_FORMAT);
         LinkedTreeMap<String, ArrayList<LinkedTreeMap<String, String>>> data = getUsageData(formattedFromDate,
                 formattedToDate);
-        ArrayList<LinkedTreeMap<String, String>> usageResponse =
-                data.get((useNewQueryAPI) ? StripeMonetizationConstants.GET_USAGE_BY_APPLICATION_WITH_ON_PREM_KEY
-                        : StripeMonetizationConstants.GET_USAGE_BY_APPLICATION);
+        ArrayList<LinkedTreeMap<String, String>> usageResponse = new ArrayList<>();
+        if (data != null) {
+            usageResponse =
+                    data.get((useNewQueryAPI) ? StripeMonetizationConstants.GET_USAGE_BY_APPLICATION_WITH_ON_PREM_KEY
+                            : StripeMonetizationConstants.GET_USAGE_BY_APPLICATION);
+        }
         if (usageResponse.isEmpty()) {
             try {
                 log.debug("No API Usage retrived for the given period of time");
@@ -855,9 +858,8 @@ public class StripeMonetizationImpl implements Monetization {
                     getAPIManagerConfiguration();
         }
 
-        String queryApiEndpoint =
-                config.getFirstProperty(StripeMonetizationConstants.CHOREO_INSIGHT_API_ENDPOINT_PROP);
-        String onPremKey = config.getFirstProperty(StripeMonetizationConstants.ANALYTICS_ACCESS_TOKEN_PROP);
+        String queryApiEndpoint = config.getMonetizationConfigurationDto().getInsightAPIEndpoint();
+        String onPremKey = config.getMonetizationConfigurationDto().getAnalyticsAccessToken();
         if (StringUtils.isEmpty(queryApiEndpoint) || StringUtils.isEmpty(onPremKey)) {
             // Since on prem key is required for both query APIs, it has been made mandatory
             throw new MonetizationException(
@@ -867,6 +869,10 @@ public class StripeMonetizationImpl implements Monetization {
         String accessToken;
         if (MonetizationDataHolder.getInstance().getMonetizationAccessTokenGenerator() != null) {
             accessToken = MonetizationDataHolder.getInstance().getMonetizationAccessTokenGenerator().getAccessToken();
+            if (StringUtils.isEmpty(accessToken)) {
+                throw new MonetizationException(
+                        "Cannot retrieve access token from the provided token url");
+            }
             useNewQueryAPI = true;
         } else {
             accessToken = onPremKey;
