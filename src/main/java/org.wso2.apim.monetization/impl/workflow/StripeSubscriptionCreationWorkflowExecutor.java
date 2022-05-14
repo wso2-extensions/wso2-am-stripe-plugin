@@ -65,6 +65,7 @@ import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 
 import java.nio.charset.Charset;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
@@ -175,7 +176,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         }
         //needed to create artifacts in the stripe connected account
         RequestOptions requestOptions = RequestOptions.builder().setStripeAccount(connectedAccountKey).build();
-        try {
+        try (Connection con = APIMgtDBUtil.getConnection()) {
             subscriber = apiMgtDAO.getSubscriber(subWorkFlowDTO.getSubscriber());
             // check whether the application is already registered as a customer under the particular
             // APIprovider/Connected Account in Stripe
@@ -193,7 +194,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
                         requestOptions, subWorkFlowDTO);
             }
             //creating Subscriptions
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
             String planId = stripeMonetizationDAO.getBillingEnginePlanIdForTier(apiId, subWorkFlowDTO.getTierName());
             createMonetizedSubscriptions(planId, monetizationSharedCustomer, requestOptions, subWorkFlowDTO, api.getUuid());
         } catch (APIManagementException e) {
