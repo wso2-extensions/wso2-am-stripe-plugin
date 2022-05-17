@@ -451,8 +451,8 @@ public class StripeMonetizationImpl implements Monetization {
         String apiName = api.getId().getApiName();
         String apiVersion = api.getId().getVersion();
         String apiProvider = api.getId().getProviderName();
-        try {
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
+        try (Connection con = APIMgtDBUtil.getConnection()) {
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
             String billingProductIdForApi = getBillingProductIdForApi(apiId);
             //create billing engine product if it does not exist
             if (StringUtils.isEmpty(billingProductIdForApi)) {
@@ -550,9 +550,9 @@ public class StripeMonetizationImpl implements Monetization {
             //throw MonetizationException as it will be logged and handled by the caller
             throw new MonetizationException(errorMessage);
         }
-        try {
+        try (Connection con = APIMgtDBUtil.getConnection()) {
             String apiName = api.getId().getApiName();
-            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
+            int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
             String billingProductIdForApi = getBillingProductIdForApi(apiId);
             //no product in the billing engine, so return
             if (StringUtils.isBlank(billingProductIdForApi)) {
@@ -605,10 +605,8 @@ public class StripeMonetizationImpl implements Monetization {
      * @throws MonetizationException if failed to get tier to billing plan mapping
      */
     public Map<String, String> getMonetizedPoliciesToPlanMapping(API api) throws MonetizationException {
-
-        try {
+        try (Connection con = APIMgtDBUtil.getConnection()) {
             String apiName = api.getId().getApiName();
-            Connection con = APIMgtDBUtil.getConnection();
             int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
             //get billing engine product ID for that API
             String billingProductIdForApi = getBillingProductIdForApi(apiId);
@@ -985,7 +983,7 @@ public class StripeMonetizationImpl implements Monetization {
 
         Map<String, String> billingEngineUsageData = new HashMap<String, String>();
         String apiName = null;
-        try {
+        try (Connection con = APIMgtDBUtil.getConnection()) {
             SubscribedAPI subscribedAPI = ApiMgtDAO.getInstance().getSubscriptionByUUID(subscriptionUUID);
             APIIdentifier apiIdentifier = subscribedAPI.getApiId();
             APIProductIdentifier apiProductIdentifier;
@@ -1007,7 +1005,7 @@ public class StripeMonetizationImpl implements Monetization {
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
-                apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), APIMgtDBUtil.getConnection());
+                apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
             } else {
                 apiProductIdentifier = subscribedAPI.getProductId();
                 apiProduct = apiProvider.getAPIProduct(apiProductIdentifier);
