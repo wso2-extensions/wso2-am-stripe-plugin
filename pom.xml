@@ -34,6 +34,11 @@
             <artifactId>commons-lang</artifactId>
             <version>${commons.lang.version}</version>
         </dependency>
+        <dependency>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+            <version>${elastic.client.version}</version>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>
@@ -47,9 +52,10 @@
     </repositories>
 
     <properties>
-        <carbon.apimgt.version>9.20.52</carbon.apimgt.version>
+        <carbon.apimgt.version>9.22.16</carbon.apimgt.version>
         <commons.lang.version>2.6</commons.lang.version>
         <stripe.version>9.8.0</stripe.version>
+        <elastic.client.version>8.3.1</elastic.client.version>
     </properties>
 
     <build>
