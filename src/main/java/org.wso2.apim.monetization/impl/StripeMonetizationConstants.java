@@ -155,19 +155,11 @@ public class StripeMonetizationConstants {
     public static final String GET_USAGE_BY_APPLICATION = "getSuccessAPIsUsageByApplications";
     public static final String GET_USAGE_BY_APPLICATION_WITH_ON_PREM_KEY = "getSuccessAPIsUsageByApplicationsWithOnPremKey";
     public static final String AT = "@";
-
     public static final String DEFAULT_ELK_ANALYTICS_INDEX = "apim_event_response";
-
     public static final String REQUEST_TIMESTAMP_COLUMN = "requestTimestamp";
-
     public static final String ELK_API_ID_COL = "apiId.keyword";
-
     public static final String ELK_TENANT_DOMAIN = "apiCreatorTenantDomain.keyword";
-
     public static final String APPLICATION_ID_COLUMN = "applicationId";
-
     public static final String ELK_APPLICATION_ID_COLUMN = "applicationId.keyword";
-
-
 
 }
