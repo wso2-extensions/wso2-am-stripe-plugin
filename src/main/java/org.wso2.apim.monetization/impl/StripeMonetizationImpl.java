@@ -1101,7 +1101,7 @@ public class StripeMonetizationImpl implements Monetization {
 
                 return elasticsearchClient.search(searchRequest, Object.class);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new MonetizationException("Error occurred while executing data retrieval from Elasticsearch", e);
             }
         } else {
             try (RestClient restClient = RestClient.builder(new HttpHost(hostname, port))
