@@ -1047,12 +1047,13 @@ public class StripeMonetizationImpl implements Monetization {
                     //throw MonetizationException as it will be logged and handled by the caller
                     throw new MonetizationException(errorMessage);
                 }
-                //upcoming invoice is only applicable for metered usage (i.e - dynamic usage)
-                if (!StripeMonetizationConstants.METERED_USAGE.equalsIgnoreCase
-                        (billingEngineSubscription.getPlan().getUsageType())) {
-                    String errorMessage = "Usage type should be set to 'metered' to get the pending bill.";
+                String usageType = billingEngineSubscription.getPlan().getUsageType();
+                boolean dynamicUsage = StripeMonetizationConstants.METERED_USAGE.equalsIgnoreCase(usageType);
+                boolean fixedRate = StripeMonetizationConstants.LICENSED_USAGE.equalsIgnoreCase(usageType);
+                if (!dynamicUsage && !fixedRate) {
+                    String errorMsg = "Usage type should be set to 'metered' or 'licensed' to get the pending bill.";
                     //throw MonetizationException as it will be logged and handled by the caller
-                    throw new MonetizationException(errorMessage);
+                    throw new MonetizationException(errorMsg);
                 }
                 Map<String, Object> invoiceParams = new HashMap<String, Object>();
                 invoiceParams.put("subscription", billingEngineSubscription.getId());
