@@ -95,7 +95,7 @@
                         <Private-Package>
                             co.elastic.clients.*,
                             org.elasticsearch.client.*,
-                            org.apache.http.imple.nio.*,
+                            org.apache.http.impl.nio.*,
                             org.apache.http.nio.*,
                             org.eclipse.parsson.*
                         </Private-Package>
