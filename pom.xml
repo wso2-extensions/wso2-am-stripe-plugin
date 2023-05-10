@@ -6,7 +6,7 @@
 
     <groupId>org.wso2.apim.monetization</groupId>
     <artifactId>org.wso2.apim.monetization.impl</artifactId>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
     <packaging>bundle</packaging>
 
     <dependencies>
