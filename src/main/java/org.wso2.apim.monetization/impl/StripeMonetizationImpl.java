@@ -1282,7 +1282,7 @@ public class StripeMonetizationImpl implements Monetization {
         String apiName = null;
         try (Connection con = APIMgtDBUtil.getConnection()) {
             SubscribedAPI subscribedAPI = ApiMgtDAO.getInstance().getSubscriptionByUUID(subscriptionUUID);
-            APIIdentifier apiIdentifier = subscribedAPI.getApiId();
+            APIIdentifier apiIdentifier = subscribedAPI.getAPIIdentifier();
             APIProductIdentifier apiProductIdentifier;
             API api;
             APIProduct apiProduct;
