@@ -30,7 +30,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.wso2.apim.monetization.impl.StripeMonetizationConstants;
 import org.wso2.apim.monetization.impl.StripeMonetizationDAO;
 import org.wso2.apim.monetization.impl.StripeMonetizationException;
@@ -47,7 +46,6 @@ import org.wso2.carbon.apimgt.impl.APIManagerConfiguration;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.dto.SubscriptionWorkflowDTO;
 import org.wso2.carbon.apimgt.impl.dto.WorkflowDTO;
-import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.impl.workflow.GeneralWorkflowResponse;
@@ -59,12 +57,9 @@ import org.wso2.carbon.apimgt.persistence.APIPersistence;
 import org.wso2.carbon.apimgt.persistence.PersistenceManager;
 import org.wso2.carbon.apimgt.persistence.dto.Organization;
 import org.wso2.carbon.apimgt.persistence.dto.PublisherAPI;
+import org.wso2.carbon.apimgt.persistence.dto.PublisherAPIProduct;
 import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
-import org.wso2.carbon.registry.core.Registry;
-import org.wso2.carbon.registry.core.Resource;
-import org.wso2.carbon.registry.core.exceptions.RegistryException;
 
-import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -124,12 +119,8 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     @Override
     public WorkflowResponse monetizeSubscription(WorkflowDTO workflowDTO, API api) throws WorkflowException {
 
-        boolean isMonetizationEnabled = false;
-        SubscriptionWorkflowDTO subWorkFlowDTO = null;
-        String stripePlatformAccountKey = null;
-        Subscriber subscriber = null;
-        Customer customer = null;
-        Customer sharedCustomerBE = null;
+        SubscriptionWorkflowDTO subWorkFlowDTO;
+        Subscriber subscriber;
         MonetizationPlatformCustomer monetizationPlatformCustomer;
         MonetizationSharedCustomer monetizationSharedCustomer;
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
@@ -149,7 +140,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
 
         //read the platform account key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
-        String connectedAccountKey = StringUtils.EMPTY;
+        String connectedAccountKey;
         Organization org = new Organization(workflowDTO.getTenantDomain());
         PublisherAPI publisherAPI = null;
         try {
@@ -218,20 +209,36 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     public WorkflowResponse monetizeSubscription(WorkflowDTO workflowDTO, APIProduct apiProduct)
             throws WorkflowException {
 
-        boolean isMonetizationEnabled = false;
-        SubscriptionWorkflowDTO subWorkFlowDTO = null;
-        String stripePlatformAccountKey = null;
-        Subscriber subscriber = null;
-        Customer customer = null;
-        Customer sharedCustomerBE = null;
+        SubscriptionWorkflowDTO subWorkFlowDTO;
+        Subscriber subscriber;
         MonetizationPlatformCustomer monetizationPlatformCustomer;
         MonetizationSharedCustomer monetizationSharedCustomer;
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
         subWorkFlowDTO = (SubscriptionWorkflowDTO) workflowDTO;
+
+        Properties properties = new Properties();
+        properties.put(APIConstants.ALLOW_MULTIPLE_STATUS, APIUtil.isAllowDisplayAPIsWithMultipleStatus());
+        properties.put(APIConstants.ALLOW_MULTIPLE_VERSIONS, APIUtil.isAllowDisplayMultipleVersions());
+        Map<String, String> configMap = new HashMap<>();
+        Map<String, String> configs = APIManagerConfiguration.getPersistenceProperties();
+        if (configs != null && !configs.isEmpty()) {
+            configMap.putAll(configs);
+        }
+        configMap.put(APIConstants.ALLOW_MULTIPLE_STATUS,
+                Boolean.toString(APIUtil.isAllowDisplayAPIsWithMultipleStatus()));
+        apiPersistenceInstance = PersistenceManager.getPersistenceInstance(configMap, properties);
+
         //read the platform account key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
-        String connectedAccountKey = StringUtils.EMPTY;
-        Map<String, String> monetizationProperties = new Gson().fromJson(apiProduct.getMonetizationProperties().toString(),
+        String connectedAccountKey;
+        PublisherAPIProduct product;
+        try {
+            product = apiPersistenceInstance.getPublisherAPIProduct(new Organization(workflowDTO.getTenantDomain()),
+                    apiProduct.getUuid());
+        } catch (APIPersistenceException e) {
+            throw new WorkflowException("Failed to retrieve the Product of UUID: " + apiProduct.getUuid(), e);
+        }
+        Map<String, String> monetizationProperties = new Gson().fromJson(product.getMonetizationProperties().toString(),
                 HashMap.class);
         if (MapUtils.isNotEmpty(monetizationProperties) &&
                 monetizationProperties.containsKey(StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY)) {
