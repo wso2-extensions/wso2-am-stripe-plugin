@@ -92,6 +92,7 @@ import org.wso2.carbon.apimgt.persistence.PersistenceManager;
 import org.wso2.carbon.apimgt.persistence.dto.Organization;
 import org.wso2.carbon.apimgt.persistence.dto.PublisherAPI;
 import org.wso2.carbon.apimgt.persistence.dto.PublisherAPIInfo;
+import org.wso2.carbon.apimgt.persistence.dto.PublisherAPIProduct;
 import org.wso2.carbon.apimgt.persistence.dto.PublisherAPISearchResult;
 import org.wso2.carbon.apimgt.persistence.dto.UserContext;
 import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
@@ -114,6 +115,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.TimeZone;
 
 import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.API_UUID;
@@ -122,6 +125,7 @@ import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.DEFAUL
 import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.ELK_API_ID_COL;
 import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.ELK_APPLICATION_ID_COLUMN;
 import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.ELK_TENANT_DOMAIN;
+import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.PRODUCTS;
 import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.REQUEST_TIMESTAMP_COLUMN;
 import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.TENANT_DOMAIN_COL;
 
@@ -131,11 +135,11 @@ import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.TENANT
 public class StripeMonetizationImpl implements Monetization {
 
     private static final Log log = LogFactory.getLog(StripeMonetizationImpl.class);
-    private StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
     private static APIManagerConfiguration config = null;
-    private ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
     APIPersistence apiPersistenceInstance;
     boolean useNewQueryAPI = true;
+    private StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
+    private ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
 
     /**
      * Create billing plan for a policy
@@ -737,25 +741,22 @@ public class StripeMonetizationImpl implements Monetization {
             }
 
             for (StringTermsBucket apiIdBucketObj : apiIdBuckets) {
-                apiUuid = apiIdBucketObj.key();
+                apiUuid = apiIdBucketObj.key().stringValue();
                 List<StringTermsBucket> tenantBasedBuckets = apiIdBucketObj.aggregations().get(TENANT_DOMAIN_COL)
                         .sterms().buckets().array();
                 for (StringTermsBucket tenantBasedBucket : tenantBasedBuckets) {
-                    tenantDomain = tenantBasedBucket.key();
-
+                    tenantDomain = tenantBasedBucket.key().stringValue();
                     List<StringTermsBucket> appIdBuckets = tenantBasedBucket.aggregations()
                             .get(APPLICATION_ID_COLUMN).sterms().buckets().array();
                     for (StringTermsBucket appIdBucketObj : appIdBuckets) {
-                        String applicationUuid = appIdBucketObj.key();
+                        String applicationUuid = appIdBucketObj.key().stringValue();
                         requestCount = appIdBucketObj.docCount();
-
                         try {
                             APIInfo api1 = apiMgtDAO.getAPIInfoByUUID(apiUuid);
                             apiName = api1.getName();
                             apiProvider = api1.getProvider();
                             Application app = apiMgtDAO.getApplicationByUUID(applicationUuid);
                             applicationId = app.getId();
-
                             try {
                                 //get the billing engine subscription details
                                 MonetizedSubscription subscription = stripeMonetizationDAO
@@ -1238,6 +1239,23 @@ public class StripeMonetizationImpl implements Monetization {
                             throw new MonetizationException("Failed to retrieve the API of UUID: " + api.getUUID(), e);
                         }
                     }
+                    Map<String, Object> productMap = apiProviderNew.searchPaginatedAPIProducts("", tenant.getDomain(), 0,
+                            Integer.MAX_VALUE);
+                    if (productMap != null && productMap.containsKey(PRODUCTS)) {
+                        SortedSet<APIProduct> productSet = (SortedSet<APIProduct>) productMap.get(PRODUCTS);
+                        for (APIProduct apiProduct : productSet) {
+                            PublisherAPIProduct publisherAPIProduct;
+                            try {
+                                publisherAPIProduct = apiPersistenceInstance.getPublisherAPIProduct(org,
+                                        apiProduct.getUuid());
+                                if (publisherAPIProduct.isMonetizationEnabled()) {
+                                    monetizedAPIIdsList.add(apiProduct.getUuid());
+                                }
+                            } catch (APIPersistenceException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
                 } catch (APIManagementException e) {
                     throw new MonetizationException("Error while retrieving the Ids of Monetized APIs");
                 }
@@ -1282,7 +1300,7 @@ public class StripeMonetizationImpl implements Monetization {
         String apiName = null;
         try (Connection con = APIMgtDBUtil.getConnection()) {
             SubscribedAPI subscribedAPI = ApiMgtDAO.getInstance().getSubscriptionByUUID(subscriptionUUID);
-            APIIdentifier apiIdentifier = subscribedAPI.getApiId();
+            APIIdentifier apiIdentifier = subscribedAPI.getAPIIdentifier();
             APIProductIdentifier apiProductIdentifier;
             API api;
             APIProduct apiProduct;

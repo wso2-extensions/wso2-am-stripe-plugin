@@ -94,6 +94,7 @@ public class StripeMonetizationConstants {
     public static final String BILLING_SCHEME = "billing_scheme";
     public static final String USD = "usd";
     public static final String PRODUCT = "product";
+    public static final String PRODUCTS = "products";
     public static final String PRODUCT_NICKNAME = "nickname";
     public static final String INTERVAL = "interval";
     public static final String BILLING_CYCLE = "billingCycle";
