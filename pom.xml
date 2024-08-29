@@ -19,12 +19,12 @@
         <dependency>
             <groupId>org.wso2.carbon.apimgt</groupId>
             <artifactId>org.wso2.carbon.apimgt.impl</artifactId>
-            <version>${carbon.apimgt.version}</version>
+            <version>${carbon.apimgt.version.2}</version>
         </dependency>
         <dependency>
             <groupId>org.wso2.carbon.apimgt</groupId>
             <artifactId>org.wso2.carbon.apimgt.api</artifactId>
-            <version>${carbon.apimgt.version}</version>
+            <version>${carbon.apimgt.version.2}</version>
         </dependency>
         <dependency>
             <groupId>org.wso2.carbon.apimgt</groupId>
@@ -71,6 +71,7 @@
 
     <properties>
         <carbon.apimgt.version>9.29.119</carbon.apimgt.version>
+        <carbon.apimgt.version.2>9.29.188-SNAPSHOT</carbon.apimgt.version.2>
         <commons.lang.version>2.6</commons.lang.version>
         <stripe.version>9.8.0</stripe.version>
         <elastic.client.version>8.13.1</elastic.client.version>
