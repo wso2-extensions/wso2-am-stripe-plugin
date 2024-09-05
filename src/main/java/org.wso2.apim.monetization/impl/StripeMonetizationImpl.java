@@ -1135,7 +1135,7 @@ public class StripeMonetizationImpl extends AbstractMonetization {
                             connectedAccountKey = monetizationProperties.get
                                     (StripeMonetizationConstants.BILLING_ENGINE_CONNECTED_ACCOUNT_KEY);
                             if (StringUtils.isBlank(connectedAccountKey)) {
-                                String errorMessage = "Connected acccount stripe key was not founf for : "
+                                String errorMessage = "Connected acccount stripe key was not found for : "
                                         + api.getId().getApiName();
                                 //throw MonetizationException as it will be logged and handled by the caller
                                 throw new MonetizationException(errorMessage);
