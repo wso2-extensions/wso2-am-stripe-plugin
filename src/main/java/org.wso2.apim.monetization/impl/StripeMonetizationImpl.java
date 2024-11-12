@@ -16,21 +16,7 @@
 
 package org.wso2.apim.monetization.impl;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldValue;
-import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
-import co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
-import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.google.gson.Gson;
-import com.google.gson.internal.LinkedTreeMap;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Invoice;
@@ -40,25 +26,11 @@ import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.model.UsageRecord;
 import com.stripe.net.RequestOptions;
-import feign.Feign;
-import feign.gson.GsonDecoder;
-import feign.gson.GsonEncoder;
-import feign.okhttp.OkHttpClient;
-import feign.slf4j.Slf4jLogger;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.client.RestClient;
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.wso2.apim.monetization.impl.model.GraphQLClient;
-import org.wso2.apim.monetization.impl.model.graphQLResponseClient;
 import org.wso2.carbon.apimgt.api.*;
 import org.wso2.carbon.apimgt.api.model.*;
 import org.wso2.carbon.apimgt.api.model.policy.SubscriptionPolicy;
@@ -67,31 +39,20 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerConfiguration;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
-import org.wso2.carbon.apimgt.impl.internal.MonetizationDataHolder;
-import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.persistence.APIPersistence;
 import org.wso2.carbon.apimgt.persistence.PersistenceManager;
 import org.wso2.carbon.apimgt.persistence.dto.Organization;
-import org.wso2.carbon.apimgt.persistence.dto.PublisherAPI;
 import org.wso2.carbon.apimgt.persistence.dto.PublisherAPIInfo;
-import org.wso2.carbon.apimgt.persistence.dto.PublisherAPIProduct;
 import org.wso2.carbon.apimgt.persistence.dto.PublisherAPISearchResult;
 import org.wso2.carbon.apimgt.persistence.dto.UserContext;
 import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
 import org.wso2.carbon.apimgt.persistence.mapper.APIMapper;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
-import org.wso2.carbon.user.api.Tenant;
-import org.wso2.carbon.user.api.UserStoreException;
-import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.apim.monetization.impl.model.MonetizedSubscription;
-import org.wso2.apim.monetization.impl.model.GraphqlQueryModel;
-import org.wso2.apim.monetization.impl.model.QueyAPIAccessTokenInterceptor;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -103,19 +64,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-import java.util.SortedSet;
 import java.util.TimeZone;
 
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.API_UUID;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.APPLICATION_ID_COLUMN;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.DEFAULT_ELK_ANALYTICS_INDEX;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.ELK_API_ID_COL;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.ELK_APPLICATION_ID_COLUMN;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.ELK_TENANT_DOMAIN;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.PRODUCTS;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.REQUEST_TIMESTAMP_COLUMN;
-import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.TENANT_DOMAIN_COL;
 
 /**
  * This class is used to implement stripe based monetization
@@ -123,7 +73,6 @@ import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.TENANT
 public class StripeMonetizationImpl extends AbstractMonetization {
 
     private static final Log log = LogFactory.getLog(StripeMonetizationImpl.class);
-    private static APIManagerConfiguration config = null;
     private StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
     private ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
 
@@ -655,23 +604,6 @@ public class StripeMonetizationImpl extends AbstractMonetization {
         }
     }
 
-    public String getGraphQLQueryBasedOnTheOperationMode(boolean useNewQueryAPI) {
-
-        if (useNewQueryAPI) {
-            return "query($onPremKey: String!, $timeFilter: TimeFilter!, " +
-                    "$successAPIUsageByAppFilter: SuccessAPIUsageByAppFilter!) " +
-                    "{getSuccessAPIsUsageByApplicationsWithOnPremKey(onPremKey:$onPremKey, timeFilter: $timeFilter, " +
-                    "successAPIUsageByAppFilter: $successAPIUsageByAppFilter) { apiId apiName apiVersion " +
-                    "apiCreatorTenantDomain applicationId applicationName applicationOwner count}}";
-        } else {
-            return "query($timeFilter: TimeFilter!, " +
-                    "$successAPIUsageByAppFilter: SuccessAPIUsageByAppFilter!) " +
-                    "{getSuccessAPIsUsageByApplications(timeFilter: $timeFilter, " +
-                    "successAPIUsageByAppFilter: $successAPIUsageByAppFilter) { apiId apiName apiVersion " +
-                    "apiCreatorTenantDomain applicationId applicationName applicationOwner count}}";
-        }
-    }
-
     /**
      * Get current usage for a subscription
      *
@@ -1068,7 +1000,7 @@ public class StripeMonetizationImpl extends AbstractMonetization {
         int counter = 0;
         APIAdmin apiAdmin = new APIAdminImpl();
 
-        ArrayList<MonetizationUsageInfo> data = (ArrayList<MonetizationUsageInfo>) usageData;//usageData is supposed to get typecasted here
+        ArrayList<MonetizationUsageInfo> data = (ArrayList<MonetizationUsageInfo>) usageData;
 
         if (data == null) {
             String errorMessage = "No Usage Data to be published";
