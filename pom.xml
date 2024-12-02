@@ -70,7 +70,7 @@
     </dependencies>
 
     <properties>
-        <carbon.apimgt.version>9.29.119</carbon.apimgt.version>
+        <carbon.apimgt.version>9.29.135</carbon.apimgt.version>
         <commons.lang.version>2.6</commons.lang.version>
         <stripe.version>9.8.0</stripe.version>
         <elastic.client.version>8.13.1</elastic.client.version>
