@@ -1099,17 +1099,23 @@ public class StripeMonetizationImpl extends AbstractMonetization {
                     //get the first subscription item from the array
                     subscriptionItem = sub.getItems().getData().get(0);
                     //check whether the billing plan is Usage Based.
+
+                    String subscriptionId = subscription.getSubscriptionId();
+                    String subscriptionUUID = stripeMonetizationDAO.getSubscriptionUUID(Integer.parseInt(subscriptionId));
+                    SubscriptionPolicy subscriptionPolicy = apiMgtDAO.getSubscriptionPolicyByUUID(subscriptionUUID);
+                    //gets the subscription policy
+
                     if (subscriptionItem.getPlan().getUsageType().equals(
                             StripeMonetizationConstants.METERED_PLAN)) {
                         flag++;
                         Map<String, Object> usageRecordParams = new HashMap<String, Object>();
-                        if (StripeMonetizationConstants.COUNT.equals(subscription.getUsageMetric())){
+                        if (StripeMonetizationConstants.COUNT.equals(subscriptionPolicy.getUsageMetric())){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
-                        } else if (StripeMonetizationConstants.DEPTH.equals(subscription.getUsageMetric())){
+                        } else if (StripeMonetizationConstants.DEPTH.equals(subscriptionPolicy.getUsageMetric())){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, depth);
-                        } else if (StripeMonetizationConstants.COMPLEXITY.equals(subscription.getUsageMetric())){
+                        } else if (StripeMonetizationConstants.COMPLEXITY.equals(subscriptionPolicy.getUsageMetric())){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, complexity);
-                        } else if (StripeMonetizationConstants.PAYLOAD_SIZE.equals(subscription.getUsageMetric())){
+                        } else if (StripeMonetizationConstants.PAYLOAD_SIZE.equals(subscriptionPolicy.getUsageMetric())){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, payloadSize);
                         }
                         //provide the timestamp in second format
@@ -1140,6 +1146,9 @@ public class StripeMonetizationImpl extends AbstractMonetization {
             } catch (StripeException e) {
                 String errorMessage = "Unable to Publish Usage Record";
                 //throw MonetizationException as it will be logged and handled by the caller
+                throw new MonetizationException(errorMessage, e);
+            } catch (APIManagementException e) {
+                String errorMessage = "Error fetching subscription policy";
                 throw new MonetizationException(errorMessage, e);
             }
         }
