@@ -132,5 +132,9 @@ public class StripeMonetizationConstants {
     public static final String ELK_TENANT_DOMAIN = "apiCreatorTenantDomain.keyword";
     public static final String APPLICATION_ID_COLUMN = "applicationId";
     public static final String ELK_APPLICATION_ID_COLUMN = "applicationId.keyword";
+    public static final String COUNT = "count";
+    public static final String DEPTH = "depth";
+    public static final String COMPLEXITY = "complexity";
+    public static final String PAYLOAD_SIZE = "payloadSize";
 
 }
