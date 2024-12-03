@@ -996,6 +996,9 @@ public class StripeMonetizationImpl extends AbstractMonetization {
         int applicationId;
         String apiProvider = null;
         Long requestCount = 0L;
+        Long depth = 0L;
+        Long complexity = 0L;
+        Long payloadSize = 0L;
         SubscriptionItem subscriptionItem = null;
         int flag = 0;
         int counter = 0;
@@ -1029,6 +1032,9 @@ public class StripeMonetizationImpl extends AbstractMonetization {
                         "Application " + applicationName, e);
             }
             requestCount = info.getRequestCount();
+            depth = info.getDepth();
+            complexity = info.getDepth();
+            payloadSize = info.getPayloadSize();
             try{
                 //get the billing engine subscription details
                 MonetizedSubscription subscription = stripeMonetizationDAO
@@ -1097,7 +1103,15 @@ public class StripeMonetizationImpl extends AbstractMonetization {
                             StripeMonetizationConstants.METERED_PLAN)) {
                         flag++;
                         Map<String, Object> usageRecordParams = new HashMap<String, Object>();
-                        usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
+                        if (StripeMonetizationConstants.COUNT.equals(subscription.getUsageMetric())){
+                            usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
+                        } else if (StripeMonetizationConstants.DEPTH.equals(subscription.getUsageMetric())){
+                            usageRecordParams.put(StripeMonetizationConstants.QUANTITY, depth);
+                        } else if (StripeMonetizationConstants.COMPLEXITY.equals(subscription.getUsageMetric())){
+                            usageRecordParams.put(StripeMonetizationConstants.QUANTITY, complexity);
+                        } else if (StripeMonetizationConstants.PAYLOAD_SIZE.equals(subscription.getUsageMetric())){
+                            usageRecordParams.put(StripeMonetizationConstants.QUANTITY, payloadSize);
+                        }
                         //provide the timestamp in second format
                         usageRecordParams.put(StripeMonetizationConstants.TIMESTAMP,
                                 currentTimestamp / 1000);
