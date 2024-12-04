@@ -1103,20 +1103,24 @@ public class StripeMonetizationImpl extends AbstractMonetization {
                     String subscriptionId = subscription.getSubscriptionId();
                     String subscriptionUUID = stripeMonetizationDAO.getSubscriptionUUID(Integer.parseInt(subscriptionId));
                     SubscriptionPolicy subscriptionPolicy = apiMgtDAO.getSubscriptionPolicyByUUID(subscriptionUUID);
+                    String usageMetric = subscriptionPolicy.getUsageMetric();
                     //gets the subscription policy
 
                     if (subscriptionItem.getPlan().getUsageType().equals(
                             StripeMonetizationConstants.METERED_PLAN)) {
                         flag++;
                         Map<String, Object> usageRecordParams = new HashMap<String, Object>();
-                        if (StripeMonetizationConstants.COUNT.equals(subscriptionPolicy.getUsageMetric())){
+                        if (StripeMonetizationConstants.COUNT.equals(usageMetric)){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, requestCount);
-                        } else if (StripeMonetizationConstants.DEPTH.equals(subscriptionPolicy.getUsageMetric())){
+                        } else if (StripeMonetizationConstants.DEPTH.equals(usageMetric)){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, depth);
-                        } else if (StripeMonetizationConstants.COMPLEXITY.equals(subscriptionPolicy.getUsageMetric())){
+                        } else if (StripeMonetizationConstants.COMPLEXITY.equals(usageMetric)){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, complexity);
-                        } else if (StripeMonetizationConstants.PAYLOAD_SIZE.equals(subscriptionPolicy.getUsageMetric())){
+                        } else if (StripeMonetizationConstants.PAYLOAD_SIZE.equals(usageMetric)){
                             usageRecordParams.put(StripeMonetizationConstants.QUANTITY, payloadSize);
+                        } else {
+                            log.error("Invalid usage metric for monetization, usage data not published");
+                            continue;
                         }
                         //provide the timestamp in second format
                         usageRecordParams.put(StripeMonetizationConstants.TIMESTAMP,
