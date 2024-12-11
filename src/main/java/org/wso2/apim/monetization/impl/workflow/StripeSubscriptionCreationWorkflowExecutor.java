@@ -333,7 +333,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
      * @param requestOptions   contains credentials to make api requests on behalf of the connected account
      * @param subWorkFlowDTO   The WorkflowDTO which contains workflow contextual information related to the workflow
      * @return MonetizationSharedCustomer Object with the details of the created shared customer
-     * @throws WorkflowException
+     * @throws WorkflowException Thrown when the workflow execution was not fully performed
      */
     public MonetizationSharedCustomer createSharedCustomer(String email, MonetizationPlatformCustomer platformCustomer,
                                                            RequestOptions requestOptions,
@@ -403,7 +403,8 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
      * @param sharedCustomer contains info about the customer created in the provider account of Stripe
      * @param requestOptions contains connected account credential needed for Stripe transactions
      * @param subWorkFlowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
-     * @throws WorkflowException
+     * @param apiUuid        UUID of the API
+     * @throws WorkflowException Thrown when the workflow execution was not fully performed
      */
     public void createMonetizedSubscriptions(String planId, MonetizationSharedCustomer sharedCustomer,
             RequestOptions requestOptions, SubscriptionWorkflowDTO subWorkFlowDTO, String apiUuid)
@@ -460,7 +461,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
      *
      * @param subscriber object which contains info about the subscriber
      * @return StripeCustomer object which contains info about the customer created in platform account of stripe
-     * @throws WorkflowException
+     * @throws WorkflowException Thrown when the workflow execution was not fully performed
      */
     public MonetizationPlatformCustomer createMonetizationPlatformCutomer(Subscriber subscriber)
             throws WorkflowException {
@@ -507,7 +508,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
      *
      * @param workflowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
      * @return workflow response back to the caller
-     * @throws WorkflowException
+     * @throws WorkflowException Thrown when the workflow execution was not fully performed
      */
     @Override
     public WorkflowResponse complete(WorkflowDTO workflowDTO) throws WorkflowException {

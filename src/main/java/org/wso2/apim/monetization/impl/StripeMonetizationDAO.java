@@ -237,6 +237,7 @@ public class StripeMonetizationDAO {
      *
      * @param apiId API ID
      * @return billing engine product ID of the give API
+     * @throws StripeMonetizationException if failed to get billing engine product ID of the give API
      */
     public String getBillingEngineProductId(int apiId) throws StripeMonetizationException {
 
@@ -629,7 +630,6 @@ public class StripeMonetizationDAO {
      * @param sharedCustomerId Id of the shared customer
      * @param subscriptionId   Id of the Billing Engine Subscriptions
      * @param apiUuid          UUID of the API
-     * @return Id of the customer record in the database
      * @throws StripeMonetizationException If Failed To add Billing Engine Shared Customer details
      */
     public void addBESubscription(APIIdentifier identifier, int applicationId, int tenandId, int sharedCustomerId,
