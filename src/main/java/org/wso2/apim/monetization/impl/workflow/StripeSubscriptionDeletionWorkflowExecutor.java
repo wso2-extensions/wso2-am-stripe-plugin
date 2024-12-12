@@ -303,7 +303,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
      *
      * @param workflowDTO The WorkflowDTO which contains workflow contextual information related to the workflow
      * @return workflow response back to the caller
-     * @throws WorkflowException
+     * @throws WorkflowException Thrown when the workflow execution was not fully performed
      */
     @Override
     public WorkflowResponse complete(WorkflowDTO workflowDTO) throws WorkflowException {
