@@ -84,6 +84,7 @@ import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.MonetizationDataHolder;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
+import org.wso2.carbon.apimgt.impl.monetization.MonetizationSubscription;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -1498,6 +1499,15 @@ public class StripeMonetizationImpl implements Monetization {
             throw new MonetizationException(errorMessage, e);
         }
         return revenueData;
+    }
+
+    /**
+     * Returns an instance of the MonetizationSusbscription class
+     *
+     * @return MonetizationSubscription
+     */
+    public MonetizationSubscription getMonetizationSubscriptionClass(){
+        return new StripeMonetizationSubscriptionImpl();
     }
 
     /**
