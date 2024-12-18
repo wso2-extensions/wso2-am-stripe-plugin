@@ -84,6 +84,7 @@ import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.MonetizationDataHolder;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
+import org.wso2.carbon.apimgt.impl.monetization.AbstractMonetization;
 import org.wso2.carbon.apimgt.impl.monetization.MonetizationSubscription;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
@@ -116,7 +117,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TimeZone;
 
@@ -133,7 +133,7 @@ import static org.wso2.apim.monetization.impl.StripeMonetizationConstants.TENANT
 /**
  * This class is used to implement stripe based monetization
  */
-public class StripeMonetizationImpl implements Monetization {
+public class StripeMonetizationImpl extends AbstractMonetization {
 
     private static final Log log = LogFactory.getLog(StripeMonetizationImpl.class);
     private static APIManagerConfiguration config = null;
