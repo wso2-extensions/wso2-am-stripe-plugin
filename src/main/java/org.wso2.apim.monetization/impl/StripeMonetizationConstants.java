@@ -155,4 +155,5 @@ public class StripeMonetizationConstants {
     public static final String GET_USAGE_BY_APPLICATION = "getSuccessAPIsUsageByApplications";
     public static final String GET_USAGE_BY_APPLICATION_WITH_ON_PREM_KEY = "getSuccessAPIsUsageByApplicationsWithOnPremKey";
     public static final String AT = "@";
+    public static final String MONETIZATION_PROXY_ENABLE_CONFIG = "Monetization.ProxyEnabled";
 }
