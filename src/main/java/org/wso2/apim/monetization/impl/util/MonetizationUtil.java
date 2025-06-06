@@ -10,7 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.PasswordAuthentication;
 import java.net.Proxy;
 
-public final class ProxyUtil {
+public final class MonetizationUtil {
 
     private static APIManagerConfiguration config;
 
@@ -18,8 +18,7 @@ public final class ProxyUtil {
 
         if (Stripe.getConnectionProxy() == null) {
             if (config == null) {
-                config = ServiceReferenceHolder.getInstance().
-                        getAPIManagerConfigurationService().getAPIManagerConfiguration();
+                config = getConfig();
             }
             String proxyEnabled = config.getFirstProperty(APIConstants.PROXY_ENABLE);
             //proxy enabled under monetization configs
@@ -44,6 +43,12 @@ public final class ProxyUtil {
                 }
             }
         }
+    }
+
+    public static APIManagerConfiguration getConfig() {
+        APIManagerConfiguration configuration = ServiceReferenceHolder.getInstance().
+                getAPIManagerConfigurationService().getAPIManagerConfiguration();
+        return configuration;
     }
 
 }
