@@ -71,7 +71,7 @@ import java.util.Properties;
 /**
  * worrkflow executor for stripe based subscription create action
  */
-public class  StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor {
+public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor {
 
     private static final Log log = LogFactory.getLog(StripeSubscriptionCreationWorkflowExecutor.class);
     StripeMonetizationDAO stripeMonetizationDAO = StripeMonetizationDAO.getInstance();
