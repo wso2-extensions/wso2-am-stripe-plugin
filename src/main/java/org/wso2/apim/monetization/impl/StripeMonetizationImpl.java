@@ -1096,7 +1096,7 @@ public class StripeMonetizationImpl implements Monetization {
                         .query(query)
                         .aggregations(API_UUID, a -> a
                                 .terms(TermsAggregation.of(t -> t
-                                            .field(ELK_API_ID_COL)))
+                                        .field(ELK_API_ID_COL)))
                                 .aggregations(TENANT_DOMAIN_COL, b -> b
                                         .terms(TermsAggregation.of(t -> t
                                                 .field(ELK_TENANT_DOMAIN)))
