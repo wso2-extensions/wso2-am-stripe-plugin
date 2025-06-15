@@ -36,6 +36,7 @@ import org.wso2.apim.monetization.impl.StripeMonetizationDAO;
 import org.wso2.apim.monetization.impl.StripeMonetizationException;
 import org.wso2.apim.monetization.impl.model.MonetizationPlatformCustomer;
 import org.wso2.apim.monetization.impl.model.MonetizationSharedCustomer;
+import org.wso2.apim.monetization.impl.util.MonetizationUtil;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.WorkflowResponse;
 import org.wso2.carbon.apimgt.api.model.API;
@@ -123,6 +124,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
     @Override
     public WorkflowResponse monetizeSubscription(WorkflowDTO workflowDTO, API api) throws WorkflowException {
 
+        MonetizationUtil.setProxy();
         boolean isMonetizationEnabled = false;
         SubscriptionWorkflowDTO subWorkFlowDTO = null;
         String stripePlatformAccountKey = null;
@@ -227,6 +229,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         MonetizationSharedCustomer monetizationSharedCustomer;
         ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
         subWorkFlowDTO = (SubscriptionWorkflowDTO) workflowDTO;
+        MonetizationUtil.setProxy();
         //read the platform account key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkFlowDTO.getTenantId());
         String connectedAccountKey = StringUtils.EMPTY;
@@ -335,6 +338,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         Customer stripeCustomer;
         MonetizationSharedCustomer monetizationSharedCustomer = new MonetizationSharedCustomer();
         Token token;
+        MonetizationUtil.setProxy();
         try {
             Map<String, Object> params = new HashMap<String, Object>();
             params.put(StripeMonetizationConstants.CUSTOMER, platformCustomer.getCustomerId());
@@ -405,6 +409,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
         APIIdentifier identifier = new APIIdentifier(subWorkFlowDTO.getApiProvider(), subWorkFlowDTO.getApiName(),
                 subWorkFlowDTO.getApiVersion());
         Subscription subscription = null;
+        MonetizationUtil.setProxy();
         try {
             Map<String, Object> item = new HashMap<String, Object>();
             item.put(StripeMonetizationConstants.PLAN, planId);
@@ -459,6 +464,7 @@ public class StripeSubscriptionCreationWorkflowExecutor extends WorkflowExecutor
 
         MonetizationPlatformCustomer monetizationPlatformCustomer = new MonetizationPlatformCustomer();
         Customer customer = null;
+        MonetizationUtil.setProxy();
         try {
             Map<String, Object> customerParams = new HashMap<String, Object>();
             //Customer object in billing engine will be created without the email id

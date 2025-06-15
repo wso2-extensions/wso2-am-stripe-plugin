@@ -31,6 +31,7 @@ import org.wso2.apim.monetization.impl.StripeMonetizationConstants;
 import org.wso2.apim.monetization.impl.StripeMonetizationDAO;
 import org.wso2.apim.monetization.impl.StripeMonetizationException;
 import org.wso2.apim.monetization.impl.model.MonetizedSubscription;
+import org.wso2.apim.monetization.impl.util.MonetizationUtil;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.WorkflowResponse;
 import org.wso2.carbon.apimgt.api.model.API;
@@ -123,6 +124,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
         configMap.put(APIConstants.ALLOW_MULTIPLE_STATUS,
                 Boolean.toString(APIUtil.isAllowDisplayAPIsWithMultipleStatus()));
         apiPersistenceInstance = PersistenceManager.getPersistenceInstance(configMap, properties);
+        MonetizationUtil.setProxy();
         //read the platform key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkflowDTO.getTenantId());
         String connectedAccountKey = StringUtils.EMPTY;
@@ -202,6 +204,7 @@ public class StripeSubscriptionDeletionWorkflowExecutor extends WorkflowExecutor
         MonetizedSubscription monetizedSubscription;
         StripeMonetizationDAO stripeMonetizationDAO = new StripeMonetizationDAO();
         subWorkflowDTO = (SubscriptionWorkflowDTO) workflowDTO;
+        MonetizationUtil.setProxy();
         //read the platform key of Stripe
         Stripe.apiKey = getPlatformAccountKey(subWorkflowDTO.getTenantId());
         String connectedAccountKey = StringUtils.EMPTY;

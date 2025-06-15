@@ -43,6 +43,7 @@ import org.wso2.apim.monetization.impl.model.GraphqlQueryModel;
 import org.wso2.apim.monetization.impl.model.MonetizedSubscription;
 import org.wso2.apim.monetization.impl.model.QueyAPIAccessTokenInterceptor;
 import org.wso2.apim.monetization.impl.model.graphQLResponseClient;
+import org.wso2.apim.monetization.impl.util.MonetizationUtil;
 import org.wso2.carbon.apimgt.api.APIAdmin;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
@@ -62,7 +63,6 @@ import org.wso2.carbon.apimgt.impl.APIManagerConfiguration;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.MonetizationDataHolder;
-import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.impl.utils.APINameComparator;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -114,6 +114,7 @@ public class StripeMonetizationImpl implements Monetization {
      */
     public boolean createBillingPlan(SubscriptionPolicy subscriptionPolicy) throws MonetizationException {
 
+        MonetizationUtil.setProxy();
         try {
             //read tenant conf and get platform account key
             Stripe.apiKey = getStripePlatformAccountKey(subscriptionPolicy.getTenantDomain());
@@ -200,6 +201,7 @@ public class StripeMonetizationImpl implements Monetization {
      */
     public boolean updateBillingPlan(SubscriptionPolicy subscriptionPolicy) throws MonetizationException {
 
+        MonetizationUtil.setProxy();
         Map<String, String> planData = null;
         try {
             planData = stripeMonetizationDAO.getPlanData(subscriptionPolicy);
@@ -366,6 +368,7 @@ public class StripeMonetizationImpl implements Monetization {
      */
     public boolean deleteBillingPlan(SubscriptionPolicy subscriptionPolicy) throws MonetizationException {
 
+        MonetizationUtil.setProxy();
         //get old plan (if any) in the billing engine and delete
         Map<String, String> planData = null;
         try {
@@ -422,6 +425,7 @@ public class StripeMonetizationImpl implements Monetization {
     public boolean enableMonetization(String tenantDomain, API api, Map<String, String> monetizationProperties)
             throws MonetizationException {
 
+        MonetizationUtil.setProxy();
         String platformAccountKey = null;
         try {
             //read tenant conf and get platform account key
@@ -523,6 +527,7 @@ public class StripeMonetizationImpl implements Monetization {
      */
     public boolean disableMonetization(String tenantDomain, API api, Map<String, String> monetizationProperties) throws MonetizationException {
 
+        MonetizationUtil.setProxy();
         String platformAccountKey = null;
         try {
             //read tenant conf and get platform account key
@@ -657,7 +662,7 @@ public class StripeMonetizationImpl implements Monetization {
         int counter = 0;
         APIAdmin apiAdmin = new APIAdminImpl();
         SubscriptionItem subscriptionItem = null;
-
+        MonetizationUtil.setProxy();
         Date dateobj = new Date();
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat(StripeMonetizationConstants.TIME_FORMAT);
         simpleDateFormat.setTimeZone(TimeZone.getTimeZone(StripeMonetizationConstants.TIME_ZONE));
@@ -854,8 +859,7 @@ public class StripeMonetizationImpl implements Monetization {
 
         if (config == null) {
             // Retrieve the access token from api manager configurations.
-            config = ServiceReferenceHolder.getInstance().getAPIManagerConfigurationService().
-                    getAPIManagerConfiguration();
+            config = MonetizationUtil.getConfig();
         }
 
         String queryApiEndpoint = config.getMonetizationConfigurationDto().getInsightAPIEndpoint();
@@ -987,7 +991,7 @@ public class StripeMonetizationImpl implements Monetization {
         String apiName = null;
         try {
             SubscribedAPI subscribedAPI = ApiMgtDAO.getInstance().getSubscriptionByUUID(subscriptionUUID);
-            APIIdentifier apiIdentifier = subscribedAPI.getApiId();
+            APIIdentifier apiIdentifier = subscribedAPI.getAPIIdentifier();
             APIProductIdentifier apiProductIdentifier;
             API api;
             APIProduct apiProduct;
