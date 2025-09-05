@@ -56,7 +56,6 @@
             <artifactId>opentelemetry-api</artifactId>
             <version>${opentelemetry-api.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpasyncclient</artifactId>
@@ -67,12 +66,50 @@
             <artifactId>parsson</artifactId>
             <version>${parsson.version}</version>
         </dependency>
+
+        <!-- Moesif API -->
+        <dependency>
+            <groupId>com.moesif.api</groupId>
+            <artifactId>moesifapi</artifactId>
+            <version>1.8.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.moesif.unirest</groupId>
+            <artifactId>unirest-java</artifactId>
+            <version>1.0.10</version>
+        </dependency>
+
+        <!-- Additional HTTP dependencies for Moesif -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.4.15</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpmime</artifactId>
+            <version>4.5.13</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20210307</version>
+        </dependency>
     </dependencies>
 
     <properties>
-        <carbon.apimgt.version>9.29.119</carbon.apimgt.version>
+        <carbon.apimgt.version>9.31.165-SNAPSHOT</carbon.apimgt.version>
         <commons.lang.version>2.6</commons.lang.version>
-        <stripe.version>9.8.0</stripe.version>
+        <stripe.version>29.4.0</stripe.version>
         <elastic.client.version>8.13.1</elastic.client.version>
         <elastic.rest.client.version>8.13.1</elastic.rest.client.version>
         <opentelemetry-api.version>1.29.0</opentelemetry-api.version>
@@ -83,6 +120,7 @@
         <maven.compiler.version>3.5.1</maven.compiler.version>
         <maven.scr.version>1.0.10</maven.scr.version>
         <project.scm.id>scm-server</project.scm.id>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <scm>
@@ -91,6 +129,7 @@
         <connection>scm:git:https://github.com/wso2-extensions/wso2-am-stripe-plugin.git</connection>
         <tag>HEAD</tag>
     </scm>
+
     <build>
         <plugins>
             <plugin>
@@ -102,25 +141,69 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
+                        <Bundle-Version>${project.version}</Bundle-Version>
+                        <Bundle-Description>WSO2 API Manager Monetization Implementation with Moesif
+                        </Bundle-Description>
+
+                        <!-- Private packages to avoid conflicts -->
                         <Private-Package>
                             co.elastic.clients.*,
                             org.elasticsearch.client.*,
+                            com.mashape.unirest.*,
+                            org.apache.http.*,
+                            org.json.*,
+                            com.moesif.api.*
                         </Private-Package>
+
+                        <!-- Export only your implementation packages -->
                         <Export-Package>
                             org.wso2.apim.monetization.impl.*,
                             org.eclipse.parsson.*,
                         </Export-Package>
+
+                        <!-- Import packages - exclude what we're embedding -->
                         <Import-Package>
                             !com.google.gson.internal,
+                            !com.mashape.unirest.*,
+                            !org.apache.http.*,
+                            !org.json.*,
+                            !com.moesif.api.*,
                             io.opentelemetry.api.common.*,
                             org.apache.http.impl.nio.*,
                             org.apache.http.nio.*,
+                            javax.net.ssl,
+                            javax.crypto.*,
+                            javax.net,
+                            org.slf4j.*;resolution:=optional,
+                            *;resolution:=optional
                         </Import-Package>
+
+                        <!-- Enable dynamic imports as fallback -->
                         <DynamicImport-Package>*</DynamicImport-Package>
+
+                        <!-- Embed all Moesif and HTTP dependencies -->
                         <Embed-Dependency>
-                            opentelemetry-api;scope=compile|runtime;inline=false,
-                            httpasyncclient;scope=compile|runtime;inline=false,
+                            moesifapi,
+                            unirest-java,
+                            httpclient,
+                            httpcore,
+                            httpmime,
+                            json,
+                            opentelemetry-api,
+                            httpasyncclient,
+                            httpcore-nio;
+                            scope=compile|runtime;
+                            inline=false
                         </Embed-Dependency>
+
+                        <!-- Include transitive dependencies -->
+                        <Embed-Transitive>true</Embed-Transitive>
+
+                        <!-- Ensure embedded JARs are in classpath -->
+                        <Bundle-ClassPath>
+                            .,
+                            {maven-dependencies}
+                        </Bundle-ClassPath>
                     </instructions>
                 </configuration>
             </plugin>
@@ -148,5 +231,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
