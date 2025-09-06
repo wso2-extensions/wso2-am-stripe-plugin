@@ -40,7 +40,6 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
 
     private static final Log log = LogFactory.getLog(MonetizeSubscriptionCreationWorkflow.class);
     private final MonetizationDAO monetizationDAO = MonetizationDAO.getInstance();
-
     private final BillingEngine billingEngine = BillingEngineFactory.getBillingEngine();
 
     @Override
@@ -99,21 +98,13 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
         APIIdentifier identifier = new APIIdentifier(subWorkFlowDTO.getApiProvider(), subWorkFlowDTO.getApiName(),
                 subWorkFlowDTO.getApiVersion());
 
-
-//        Customer customer;
         MoesifPlanInfo moesifPlanInfo;
         String moesifApplicationKey;
         String priceId;
-        String subscriptionId;
 
         try {
             Stripe.apiKey = MonetizationUtils.getPlatformAccountKey(tenantDomain);
-
             moesifApplicationKey = MonetizationUtils.getMoesifApplicationKey(tenantDomain);
-//
-            // Create customer in Stripe
-//            customer = createStripeCustomer(workflowDTO);
-//            log.info("Created Stripe customer [id: " + customer.getId() + ", name: " + customer.getName() + "]");
 
             // Create customer in billing engine
             Customer customer = new Customer();
@@ -121,39 +112,25 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
             customer = billingEngine.createCustomer(customer);
             log.info("Created customer [id: " + customer.getId() + ", name: " + customer.getName() + "]");
 
-
-//
-//            // Register user in Moesif
-            createUserInMoesif(customer, moesifApplicationKey);
+            // Register user in Moesif
+            MonetizationUtils.createUserInMoesif(customer, moesifApplicationKey);
             log.info("Created Moesif user for Stripe customer [id: " + customer.getId() + "]");
-//
+
             // Fetch monetization plan info from DB
             try (Connection con = APIMgtDBUtil.getConnection()) {
                 int apiId = ApiMgtDAO.getInstance().getAPIID(api.getUuid(), con);
                 moesifPlanInfo = monetizationDAO.getPlanInfoForTier(apiId, subWorkFlowDTO.getTierName());
                 priceId = moesifPlanInfo.getPriceId();
             }
-//
-//            // Create subscription in Stripe
-//            subscriptionId = createMonetizedSubscriptions(priceId, customer);
 
             // Create subscription in billing engine
             SubscriptionInfo subscription = billingEngine.createSubscription(customer, priceId);
 
-//            subscriptionId = MoesifMonetizationImpl.createSubscription(
-//                    ((SubscriptionWorkflowDTO) workflowDTO).getSubscriber(),priceId);
-
-//            log.info("Created Stripe subscription [id: " + subscriptionId + "] for price [id: " + priceId + "]");
-
             monetizationDAO.addSubscription(identifier, subWorkFlowDTO.getApplicationId(), subWorkFlowDTO.getTenantId(),
                     customer.getId(), subscription.getId(), api.getUuid());
 
-            // Register user in Moesif
-            createUserInMoesif(customer, moesifApplicationKey);
-            log.info("Created Moesif user for Stripe customer [id: " + customer.getId() + "]");
-
             // Create billing meter in Moesif
-            createBillingMeterInMoesif(subscription.getId(), moesifPlanInfo, moesifApplicationKey);
+            MonetizationUtils.createBillingMeterInMoesif(subscription.getId(), moesifPlanInfo, moesifApplicationKey);
             log.info("Created Moesif billing meter for subscription [id: " + subscription.getId() + "]");
 
         } catch (SQLException | APIManagementException e) {
@@ -178,198 +155,6 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
         }
 
         return execute(workflowDTO);
-    }
-
-
-    /**
-     * Creates a user in Moesif based on the given Stripe customer.
-     *
-     * @param customer             The Stripe customer object.
-     * @param moesifApplicationKey The Moesif application key for authentication.
-     * @throws MoesifMonetizationException if user creation fails.
-     */
-    private void createUserInMoesif(Customer customer, String moesifApplicationKey)
-            throws MoesifMonetizationException {
-
-        try {
-            // Build user creation payload
-            JsonObject createUserPayload = new JsonObject();
-            createUserPayload.addProperty("user_id", customer.getName());
-            createUserPayload.addProperty("company_id", customer.getId());
-            createUserPayload.addProperty("name", customer.getName());
-
-            String response = MonetizationUtils.invokeService(
-                    MoesifMonetizationConstants.MOESIF_USER_URL, createUserPayload.toString(), moesifApplicationKey);
-
-            if (log.isDebugEnabled()) {
-                log.debug("Moesif user creation payload: " + createUserPayload);
-                log.debug("Moesif user creation response: " + response);
-            }
-            log.info("Moesif user created successfully for customer: " + customer.getName());
-
-        } catch (Exception e) {
-            String errorMessage = String.format(
-                    "Error while creating Moesif user for Stripe customer [id: %s, name: %s]",
-                    customer.getId(), customer.getName());
-            log.error(errorMessage, e);
-            throw new MoesifMonetizationException(errorMessage, e);
-        }
-    }
-
-
-    /**
-     * Creates a billing meter in Moesif for the given subscription and plan info.
-     *
-     * @param subscriptionId The ID of the subscription.
-     * @param moesifPlanInfo The Moesif plan information.
-     * @param key            The Moesif application key for authentication.
-     * @throws IOException            if an I/O exception occurs.
-     * @throws APIManagementException if an error response is returned from the service.
-     */
-    public void createBillingMeterInMoesif(String subscriptionId, MoesifPlanInfo moesifPlanInfo, String key)
-            throws IOException, APIManagementException {
-        JsonObject createBillingMeterPayload = new JsonObject();
-
-        //ToDo: slug, url_query, and es_query should be dynamically generated based on the use case
-        // but the valid range of values should be identified first
-        createBillingMeterPayload.addProperty("name", subscriptionId + "-billing-meter");
-        createBillingMeterPayload.addProperty("slug", "hourly_usage");
-        createBillingMeterPayload.addProperty("status", MoesifMonetizationConstants.BILLING_METER_STATUS_ACTIVE);
-
-        createBillingMeterPayload.addProperty(
-                "url_query",
-                "?seg[metrics][0][metricName]=sum%28events%29&seg[groups][0][field]=company_id.raw&seg[groups][0][func]=terms&seg[groups][0][buckets]=25&seg[chartType]=table"
-        );
-
-        JsonObject payload = new JsonObject();
-
-        // ===== query =====
-        JsonObject query = new JsonObject();
-        JsonObject bool = new JsonObject();
-        JsonArray mustArray = new JsonArray();
-
-        // --- first must -> bool should ---
-        JsonObject must1 = new JsonObject();
-        JsonObject innerBool = new JsonObject();
-        JsonArray shouldArray = new JsonArray();
-
-        // should -> terms subscription_id.raw
-        JsonObject should1 = new JsonObject();
-        JsonObject terms1 = new JsonObject();
-        JsonArray subIds = new JsonArray();
-        subIds.add("{{subscription_id}}");
-        terms1.add("subscription_id.raw", subIds);
-        should1.add("terms", terms1);
-        shouldArray.add(should1);
-
-        // should -> bool must_not exists subscription_id.raw
-        JsonObject should2 = new JsonObject();
-        JsonObject bool2 = new JsonObject();
-        JsonObject mustNot = new JsonObject();
-        JsonObject exists = new JsonObject();
-        exists.addProperty("field", "subscription_id.raw");
-        mustNot.add("exists", exists);
-        bool2.add("must_not", mustNot);
-        should2.add("bool", bool2);
-        shouldArray.add(should2);
-
-        // put should[] inside bool
-        innerBool.add("should", shouldArray);
-        must1.add("bool", innerBool);
-        mustArray.add(must1);
-
-        // --- second must -> terms company_id.raw ---
-        JsonObject must2 = new JsonObject();
-        JsonObject terms2 = new JsonObject();
-        JsonArray companyIds = new JsonArray();
-        companyIds.add("{{company_id}}");
-        terms2.add("company_id.raw", companyIds);
-        must2.add("terms", terms2);
-        mustArray.add(must2);
-
-        // build bool.must
-        bool.add("must", mustArray);
-        query.add("bool", bool);
-        payload.add("query", query);
-
-        // ===== aggs =====
-        JsonObject aggs = new JsonObject();
-        JsonObject seg = new JsonObject();
-
-        // filter: match_all
-        JsonObject filter = new JsonObject();
-        filter.add("match_all", new JsonObject());
-        seg.add("filter", filter);
-
-        // aggs inside seg
-        JsonObject segAggs = new JsonObject();
-        JsonObject usageValue = new JsonObject();
-        JsonObject sum = new JsonObject();
-        sum.addProperty("field", "weight");
-        sum.addProperty("missing", 1);
-        usageValue.add("sum", sum);
-        segAggs.add("usage_value", usageValue);
-        seg.add("aggs", segAggs);
-
-        // add seg under aggs
-        aggs.add("seg", seg);
-        payload.add("aggs", aggs);
-
-        // ===== size =====
-        payload.addProperty("size", 0);
-
-        // ===== final =====
-        System.out.println(payload.toString());
-
-        // attach to your createBillingMeterPayload
-        createBillingMeterPayload.add("es_query", payload);
-
-
-        // billing_plan
-        JsonObject billingPlan = new JsonObject();
-        billingPlan.addProperty("provider_slug", Provider.STRIPE.getValue());
-
-        JsonObject params = new JsonObject();
-
-        // stripe_params
-        JsonObject stripeParams = new JsonObject();
-
-        // product
-        JsonObject product = new JsonObject();
-        product.addProperty("name", moesifPlanInfo.getPlanName());
-        product.addProperty("id", moesifPlanInfo.getPlanId());
-        stripeParams.add("product", product);
-
-        // prices
-        JsonArray pricesArray = new JsonArray();
-        JsonObject price = new JsonObject();
-        price.addProperty("price_id", moesifPlanInfo.getPriceId());
-        pricesArray.add(price);
-        stripeParams.add("prices", pricesArray);
-
-        // reporting
-        JsonObject reporting = new JsonObject();
-        reporting.addProperty("reporting_period", "5m");
-        stripeParams.add("reporting", reporting);
-
-        // add stripe_params
-        params.add("stripe_params", stripeParams);
-        params.addProperty("usage_multiplier", 1);
-        params.addProperty("usage_rounding_mode", "up");
-
-        // add params to billing_plan
-        billingPlan.add("params", params);
-
-        // add billing_plan to root
-        createBillingMeterPayload.add("billing_plan", billingPlan);
-
-        if (log.isDebugEnabled()) {
-            log.debug("Moesif billing meter creation payload: " + createBillingMeterPayload);
-        }
-
-        MonetizationUtils.invokeService(MoesifMonetizationConstants.BILLING_METER_URL,
-                createBillingMeterPayload.toString(), key);
-
     }
 
 
