@@ -4,15 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.stripe.Stripe;
 
-import org.wso2.apim.monetization.impl.model.billing.Subscription;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.SubscriptionCreateParams;
+import org.wso2.apim.monetization.impl.model.billing.SubscriptionInfo;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.apim.monetization.impl.MoesifMonetizationException;
-import org.wso2.apim.monetization.impl.MoesifMonetizationImpl;
 import org.wso2.apim.monetization.impl.MonetizationDAO;
-import org.wso2.apim.monetization.impl.StripeMonetizationException;
 import org.wso2.apim.monetization.impl.billing.BillingEngine;
 import org.wso2.apim.monetization.impl.billing.BillingEngineFactory;
 import org.wso2.apim.monetization.impl.constants.MoesifMonetizationConstants;
@@ -142,7 +138,7 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
 //            subscriptionId = createMonetizedSubscriptions(priceId, customer);
 
             // Create subscription in billing engine
-            Subscription subscription = billingEngine.createSubscription(customer, priceId);
+            SubscriptionInfo subscription = billingEngine.createSubscription(customer, priceId);
 
 //            subscriptionId = MoesifMonetizationImpl.createSubscription(
 //                    ((SubscriptionWorkflowDTO) workflowDTO).getSubscriber(),priceId);
@@ -184,40 +180,6 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
         return execute(workflowDTO);
     }
 
-//    /**
-//     * Creates a Stripe customer for the given subscription workflow.
-//     *
-//     * @param workflowDTO The subscription workflow DTO containing subscriber details.
-//     * @return The created Stripe Customer object.
-//     * @throws StripeMonetizationException if customer creation fails.
-//     */
-//    private Customer createStripeCustomer(WorkflowDTO workflowDTO) throws StripeMonetizationException {
-//        try {
-//            // Build customer creation parameters
-//            CustomerCreateParams params = CustomerCreateParams.builder()
-//                    .setName(((SubscriptionWorkflowDTO) workflowDTO).getSubscriber())
-//                    .build();
-//
-//            // Create customer in Stripe
-//            Customer customer = Customer.create(params);
-//
-//            if (log.isDebugEnabled()) {
-//                log.debug("Stripe customer creation request: " + params);
-//                log.debug("Stripe customer creation response: " + customer);
-//            }
-//            log.info("Stripe customer created successfully for subscriber: "
-//                    + ((SubscriptionWorkflowDTO) workflowDTO).getSubscriber());
-//
-//            return customer;
-//
-//        } catch (Exception e) {
-//            String errorMessage = String.format(
-//                    "Error while creating Stripe customer for subscriber [%s]",
-//                    ((SubscriptionWorkflowDTO) workflowDTO).getSubscriber());
-//            log.error(errorMessage, e);
-//            throw new StripeMonetizationException(errorMessage, e);
-//        }
-//    }
 
     /**
      * Creates a user in Moesif based on the given Stripe customer.
@@ -253,34 +215,6 @@ public class MonetizeSubscriptionCreationWorkflow extends WorkflowExecutor {
             throw new MoesifMonetizationException(errorMessage, e);
         }
     }
-
-
-//    /**
-//     * Creates a monetized subscription in Stripe for the given price and customer.
-//     *
-//     * @param priceId  The ID of the price to subscribe to.
-//     * @param customer The Stripe customer object.
-//     * @return The ID of the created subscription.
-//     * @throws StripeMonetizationException if subscription creation fails.
-//     */
-//    public String createMonetizedSubscriptions(String priceId, Customer customer) throws StripeMonetizationException {
-//        try {
-//            SubscriptionCreateParams params = SubscriptionCreateParams.builder()
-//                    .setCustomer(customer.getId())
-//                    .addItem(SubscriptionCreateParams.Item.builder()
-//                            .setPrice(priceId)
-//                            .build()
-//                    ).build();
-//            Subscription subscription = Subscription.create(params);
-//
-//            return subscription.getId();
-//        } catch (Exception e) {
-//            String errorMessage = String.format(
-//                    "Error while creating subscription for customer: " + customer.getId() + " and price: " + priceId);
-//            ;
-//            throw new StripeMonetizationException(errorMessage, e);
-//        }
-//    }
 
 
     /**

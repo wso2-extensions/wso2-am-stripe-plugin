@@ -1,15 +1,12 @@
 package org.wso2.apim.monetization.impl;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.stripe.Stripe;
-import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
-import com.stripe.model.Invoice;
 import com.stripe.model.Subscription;
 import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.InvoiceCreatePreviewParams;
 import com.stripe.param.SubscriptionCreateParams;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -18,8 +15,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.apim.monetization.impl.constants.MoesifMonetizationConstants;
 import org.wso2.apim.monetization.impl.enums.MoesifPricingModel;
 import org.wso2.apim.monetization.impl.enums.Provider;
-import org.wso2.apim.monetization.impl.model.MoesifPlanInfo;
-import org.wso2.apim.monetization.impl.model.MonetizedStripeSubscriptionInfo;
+import org.wso2.apim.monetization.impl.model.billing.SubscriptionInfo;
 import org.wso2.apim.monetization.impl.util.MonetizationUtils;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
@@ -29,9 +25,9 @@ import org.wso2.carbon.apimgt.api.model.policy.SubscriptionPolicy;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
-import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -209,66 +205,69 @@ public class MoesifMonetizationImpl implements Monetization {
             String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
             int applicationId = subscribedAPI.getApplication().getId();
 
-            MonetizedStripeSubscriptionInfo monetizedStripeSubscriptionInfo =
+            SubscriptionInfo subscriptionInfo =
                     monetizationDAO.getMonetizedSubscription(apiId, applicationId);
 
 
+            String moesifApplicationKey = MonetizationUtils.getMoesifApplicationKey(tenantDomain);
+            String moesifBillingReport = MonetizationUtils.getBillingReport(subscriptionInfo.getId(), moesifApplicationKey);
 
+            JsonArray array = JsonParser.parseString(moesifBillingReport).getAsJsonArray();
+            JsonObject billingReport = array.get(0).getAsJsonObject();
 
-
-            Stripe.apiKey = MonetizationUtils.getPlatformAccountKey(tenantDomain);
-            InvoiceCreatePreviewParams params =
-                    InvoiceCreatePreviewParams.builder()
-                            .setCustomer(monetizedStripeSubscriptionInfo.getCustomerId())
-                            .setSubscription(monetizedStripeSubscriptionInfo.getSubscriptionId())
-                            .build();
-
-            Invoice invoice = Invoice.createPreview(params);
-
-
-            if (invoice == null) {
+            if (billingReport == null) {
                 String errorMessage = "No billing engine subscription was found for : " + apiName;
                 //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }
+
+//            if (invoice == null) {
+//                String errorMessage = "No billing engine subscription was found for : " + apiName;
+//                //throw MonetizationException as it will be logged and handled by the caller
+//                throw new MonetizationException(errorMessage);
+//            }
+
+
             SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
             dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
             //the below parameters are billing engine specific
-            billingEngineUsageData.put("Description", invoice.getDescription());
-            billingEngineUsageData.put("Paid", invoice.getAmountPaid() != null ? invoice.getAmountPaid().toString() : null);
+//            billingEngineUsageData.put("Description", invoice.getDescription());
+//            billingEngineUsageData.put("Paid", invoice.getAmountPaid() != null ? invoice.getAmountPaid().toString() : null);
 //            billingEngineUsageData.put("Tax", invoice.getTa() != null ?
 //                    invoice.getTax().toString() : null);
-            billingEngineUsageData.put("Invoice ID", invoice.getId());
-            billingEngineUsageData.put("Account Name", invoice.getAccountName());
-            billingEngineUsageData.put("Next Payment Attempt", invoice.getNextPaymentAttempt() != null ?
-                    dateFormatter.format(new Date(invoice.getNextPaymentAttempt() * 1000)) : null);
-            billingEngineUsageData.put("Customer Email", invoice.getCustomerEmail());
-            billingEngineUsageData.put("Currency", invoice.getCurrency());
-            billingEngineUsageData.put("Account Country", invoice.getAccountCountry());
-            billingEngineUsageData.put("Amount Remaining", invoice.getAmountRemaining() != null ?
-                    Long.toString(invoice.getAmountRemaining() / 100L) : null);
-            billingEngineUsageData.put("Period End", invoice.getPeriodEnd() != null ?
-                    dateFormatter.format(new Date(invoice.getPeriodEnd() * 1000)) : null);
-            billingEngineUsageData.put("Due Date", invoice.getDueDate() != null ?
-                    dateFormatter.format(new Date(invoice.getDueDate())) : null);
-            billingEngineUsageData.put("Amount Due", invoice.getAmountDue() != null ?
-                    Long.toString(invoice.getAmountDue() / 100L) : null);
-            billingEngineUsageData.put("Total Tax Amounts", invoice.getTotalTaxes() != null ?
-                    invoice.getTotalTaxes().toString() : null);
-            billingEngineUsageData.put("Amount Paid", invoice.getAmountPaid() != null ?
-                    Long.toString(invoice.getAmountPaid() / 100L) : null);
-            billingEngineUsageData.put("Subtotal", invoice.getSubtotal() != null ?
-                    Long.toString(invoice.getSubtotal() / 100L) : null);
-            billingEngineUsageData.put("Total", invoice.getTotal() != null ?
-                    Long.toString(invoice.getTotal() / 100L) : null);
-            billingEngineUsageData.put("Period Start", invoice.getPeriodStart() != null ?
-                    dateFormatter.format(new Date(invoice.getPeriodStart() * 1000)) : null);
+//            billingEngineUsageData.put("Invoice ID", get("currency").getAsString();;
+//            billingEngineUsageData.put("Account Name", invoice.getAccountName());
+//            billingEngineUsageData.put("Next Payment Attempt", invoice.getNextPaymentAttempt() != null ?
+//                    dateFormatter.format(new Date(invoice.getNextPaymentAttempt() * 1000)) : null);
+//            billingEngineUsageData.put("Customer Email", invoice.getCustomerEmail());
+            billingEngineUsageData.put("Currency", billingReport.get("currency").getAsString());
+//            billingEngineUsageData.put("Account Country", billingReport.get);
+//            billingEngineUsageData.put("Amount Remaining", invoice.getAmountRemaining() != null ?
+//                    Long.toString(invoice.getAmountRemaining() / 100L) : null);
+//            billingEngineUsageData.put("Period End", invoice.getPeriodEnd() != null ?
+//                    dateFormatter.format(new Date(invoice.getPeriodEnd() * 1000)) : null);
+//            billingEngineUsageData.put("Due Date", invoice.getDueDate() != null ?
+//                    dateFormatter.format(new Date(invoice.getDueDate())) : null);
+//            billingEngineUsageData.put("Amount Due", invoice.getAmountDue() != null ?
+//                    Long.toString(invoice.getAmountDue() / 100L) : null);
+//            billingEngineUsageData.put("Total Tax Amounts", invoice.getTotalTaxes() != null ?
+//                    invoice.getTotalTaxes().toString() : null);
+//            billingEngineUsageData.put("Amount Paid", invoice.getAmountPaid() != null ?
+//                    Long.toString(invoice.getAmountPaid() / 100L) : null);
+//            billingEngineUsageData.put("Subtotal", invoice.getSubtotal() != null ?
+//                    Long.toString(invoice.getSubtotal() / 100L) : null);
+            billingEngineUsageData.put("Total Amount", billingReport.get("amount") != null ?
+                    billingReport.get("amount").getAsString() : null);
+            billingEngineUsageData.put("Period Start", billingReport.get("usage_start_time").getAsString() != null ?
+                    billingReport.get("usage_start_time").getAsString() : null);
+            billingEngineUsageData.put("Period End", billingReport.get("usage_end_time").getAsString() != null ?
+                    billingReport.get("usage_end_time").getAsString() : null);
+            billingEngineUsageData.put("Provider", billingReport.get("provider").getAsString() != null ?
+                    billingReport.get("provider").getAsString() : null);
+            billingEngineUsageData.put("Subscription ID", billingReport.get("subscription_id").getAsString() != null ?
+                    billingReport.get("subscription_id").getAsString() : null);
 
 
-        } catch (StripeException e) {
-            String errorMessage = "Error while fetching billing engine usage data for : " + apiName;
-            //throw MonetizationException as it will be logged and handled by the caller
-            throw new MonetizationException(errorMessage, e);
         } catch (APIManagementException e) {
             String errorMessage = "Failed to get subscription details of : " + apiName;
             //throw MonetizationException as it will be logged and handled by the caller
@@ -276,7 +275,7 @@ public class MoesifMonetizationImpl implements Monetization {
         } catch (SQLException e) {
             String errorMessage = "Error while retrieving the API ID";
             throw new MonetizationException(errorMessage, e);
-        } catch (WorkflowException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
         return billingEngineUsageData;
@@ -548,4 +547,5 @@ public class MoesifMonetizationImpl implements Monetization {
             throw new MoesifMonetizationException(errorMessage, e);
         }
     }
+
 }

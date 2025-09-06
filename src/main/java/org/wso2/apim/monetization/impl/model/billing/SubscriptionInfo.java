@@ -3,7 +3,7 @@ package org.wso2.apim.monetization.impl.model.billing;
 /**
  * Represents a generic subscription in the billing system
  */
-public class Subscription {
+public class SubscriptionInfo {
 
     private String id;
     private String customerId;

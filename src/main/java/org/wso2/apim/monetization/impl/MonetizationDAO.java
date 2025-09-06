@@ -5,7 +5,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.apim.monetization.impl.constants.DatabaseConstants;
 import org.wso2.apim.monetization.impl.constants.StripeMonetizationConstants;
 import org.wso2.apim.monetization.impl.model.MoesifPlanInfo;
-import org.wso2.apim.monetization.impl.model.MonetizedStripeSubscriptionInfo;
+import org.wso2.apim.monetization.impl.model.billing.SubscriptionInfo;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.MonetizationException;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
@@ -32,7 +32,7 @@ public class MonetizationDAO {
     }
 
     public void addMonetizationData(int apiId, String planId, String planName, Map<String, String> tierPlanMap)
-            throws  APIManagementException {
+            throws APIManagementException {
 
         PreparedStatement preparedStatement = null;
         Connection connection = null;
@@ -93,8 +93,8 @@ public class MonetizationDAO {
             connection.commit();
         } catch (SQLException e) {
             String errorMessage = "Failed to get Plan Info for tier : " + tierName;
-        log.error(errorMessage, e);
-        throw new APIManagementException(errorMessage, e);
+            log.error(errorMessage, e);
+            throw new APIManagementException(errorMessage, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(statement, connection, null);
         }
@@ -103,7 +103,7 @@ public class MonetizationDAO {
 
 
     public void addSubscription(APIIdentifier identifier, int applicationId, int tenantId, String customerId,
-                                  String subscriptionId, String apiUuid) throws APIManagementException {
+                                String subscriptionId, String apiUuid) throws APIManagementException {
 
         Connection conn = null;
         ResultSet rs = null;
@@ -162,10 +162,10 @@ public class MonetizationDAO {
         return subscriptionUUID;
     }
 
-    public MonetizedStripeSubscriptionInfo getMonetizedSubscription(int apiId, int applicationId)
+    public SubscriptionInfo getMonetizedSubscription(int apiId, int applicationId)
             throws APIManagementException {
 
-        MonetizedStripeSubscriptionInfo subscription = null;
+        SubscriptionInfo subscription = new SubscriptionInfo();
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet rs = null;
@@ -180,9 +180,8 @@ public class MonetizationDAO {
 
             rs = statement.executeQuery();
             if (rs.next()) {
-                String subscriptionId = rs.getString("SUBSCRIPTION_ID");
-                String customerId = rs.getString("CUSTOMER_ID");
-                subscription = new MonetizedStripeSubscriptionInfo(subscriptionId, customerId);
+                subscription.setId(rs.getString("SUBSCRIPTION_ID"));
+                subscription.setCustomerId(rs.getString("CUSTOMER_ID"));
             }
             connection.commit();
         } catch (SQLException e) {

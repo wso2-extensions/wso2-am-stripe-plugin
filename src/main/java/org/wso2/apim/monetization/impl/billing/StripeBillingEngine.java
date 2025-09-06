@@ -1,23 +1,13 @@
 package org.wso2.apim.monetization.impl.billing;
 
-import com.stripe.exception.StripeException;
-import com.stripe.model.Invoice;
 import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.InvoiceCreatePreviewParams;
 import com.stripe.param.SubscriptionCreateParams;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.apim.monetization.impl.StripeMonetizationException;
-import org.wso2.apim.monetization.impl.model.MonetizedStripeSubscriptionInfo;
 import org.wso2.apim.monetization.impl.model.billing.Customer;
-import org.wso2.apim.monetization.impl.model.billing.Subscription;
+import org.wso2.apim.monetization.impl.model.billing.SubscriptionInfo;
 import org.wso2.carbon.apimgt.api.MonetizationException;
-
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TimeZone;
 
 public class StripeBillingEngine implements BillingEngine {
 
@@ -53,7 +43,7 @@ public class StripeBillingEngine implements BillingEngine {
     }
 
     @Override
-    public Subscription createSubscription(Customer customer, String priceId) throws MonetizationException {
+    public SubscriptionInfo createSubscription(Customer customer, String priceId) throws MonetizationException {
         try {
             SubscriptionCreateParams params = SubscriptionCreateParams.builder()
                     .setCustomer(customer.getId())
@@ -62,7 +52,7 @@ public class StripeBillingEngine implements BillingEngine {
                             .build()
                     ).build();
             com.stripe.model.Subscription stripeSubscription = com.stripe.model.Subscription.create(params);
-            Subscription subscription = new Subscription();
+            SubscriptionInfo subscription = new SubscriptionInfo();
             subscription.setId(stripeSubscription.getId());
             return subscription;
         } catch (Exception e) {

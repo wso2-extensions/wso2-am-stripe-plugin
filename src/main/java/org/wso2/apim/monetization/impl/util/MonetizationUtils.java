@@ -4,8 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.*;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.json.simple.JSONObject;
@@ -19,6 +18,8 @@ import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 public class MonetizationUtils {
 
@@ -127,6 +128,59 @@ public class MonetizationUtils {
         }
     }
 
+    public static String invokeService(String url, String method, String payload, String token)
+            throws IOException, APIManagementException {
+
+        HttpClient httpClient = APIUtil.getHttpClient(url); // pooled client
+        HttpUriRequest request;
+
+        switch (method.toUpperCase()) {
+            case "POST":
+                HttpPost post = new HttpPost(url);
+                if (payload != null) {
+                    post.setEntity(new StringEntity(payload, "UTF-8"));
+                }
+                request = post;
+                break;
+
+            case "PUT":
+                HttpPut put = new HttpPut(url);
+                if (payload != null) {
+                    put.setEntity(new StringEntity(payload, "UTF-8"));
+                }
+                request = put;
+                break;
+
+            case "DELETE":
+                request = new HttpDelete(url);
+                break;
+
+            case "GET":
+            default:
+                request = new HttpGet(url);
+                break;
+        }
+
+        // Common headers
+        request.setHeader(APIConstants.HEADER_CONTENT_TYPE, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
+        request.setHeader(APIConstants.HEADER_ACCEPT, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
+        if (token != null && !token.isEmpty()) {
+            request.setHeader("Authorization", "Bearer " + token);
+        }
+
+        try (CloseableHttpResponse response = (CloseableHttpResponse) httpClient.execute(request)) {
+            int statusCode = response.getStatusLine().getStatusCode();
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+
+            if (statusCode >= 200 && statusCode < 300) {
+                return responseBody;
+            } else {
+                throw new APIManagementException("Moesif call failed [" + statusCode + "] " + responseBody);
+            }
+        }
+    }
+
+
 
     /***
      * Construct the URL according to the provider
@@ -138,5 +192,13 @@ public class MonetizationUtils {
      */
     public static String constructProviderURL(String URL, Provider provider) {
         return String.format(URL, provider.getValue());
+    }
+
+    public static String getBillingReport(String subscriptionId, String token)
+            throws IOException, APIManagementException {
+
+        String url = MoesifMonetizationConstants.BILLING_REPORT_URL + "?subscription_id=" +
+                URLEncoder.encode(subscriptionId, StandardCharsets.UTF_8);
+        return invokeService(url, "GET", null, token);
     }
 }

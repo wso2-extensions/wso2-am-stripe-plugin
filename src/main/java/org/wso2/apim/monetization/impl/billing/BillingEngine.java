@@ -2,7 +2,7 @@ package org.wso2.apim.monetization.impl.billing;
 
 
 import org.wso2.apim.monetization.impl.model.billing.Customer;
-import org.wso2.apim.monetization.impl.model.billing.Subscription;
+import org.wso2.apim.monetization.impl.model.billing.SubscriptionInfo;
 import org.wso2.carbon.apimgt.api.MonetizationException;
 
 /**
@@ -27,6 +27,6 @@ public interface BillingEngine {
      * @return The created subscription
      * @throws MonetizationException if an error occurs
      */
-    Subscription createSubscription(Customer customer, String priceId) throws MonetizationException;
+    SubscriptionInfo createSubscription(Customer customer, String priceId) throws MonetizationException;
 
 }
