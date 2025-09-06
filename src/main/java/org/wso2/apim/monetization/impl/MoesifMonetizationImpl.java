@@ -212,6 +212,10 @@ public class MoesifMonetizationImpl implements Monetization {
             MonetizedStripeSubscriptionInfo monetizedStripeSubscriptionInfo =
                     monetizationDAO.getMonetizedSubscription(apiId, applicationId);
 
+
+
+
+
             Stripe.apiKey = MonetizationUtils.getPlatformAccountKey(tenantDomain);
             InvoiceCreatePreviewParams params =
                     InvoiceCreatePreviewParams.builder()
