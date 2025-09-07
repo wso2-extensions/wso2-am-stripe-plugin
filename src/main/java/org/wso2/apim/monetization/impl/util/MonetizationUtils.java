@@ -20,7 +20,7 @@ package org.wso2.apim.monetization.impl.util;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import okhttp3.HttpUrl;
+import com.google.gson.JsonParser;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,10 +33,13 @@ import org.json.simple.JSONObject;
 import org.wso2.apim.monetization.impl.MoesifMonetizationException;
 import org.wso2.apim.monetization.impl.constants.MoesifMonetizationConstants;
 import org.wso2.apim.monetization.impl.constants.StripeMonetizationConstants;
+import org.wso2.apim.monetization.impl.enums.MoesifPricingModel;
 import org.wso2.apim.monetization.impl.enums.Provider;
 import org.wso2.apim.monetization.impl.model.MoesifPlanInfo;
 import org.wso2.apim.monetization.impl.model.billing.Customer;
 import org.wso2.carbon.apimgt.api.APIManagementException;
+import org.wso2.carbon.apimgt.api.model.API;
+import org.wso2.carbon.apimgt.api.model.Tier;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
@@ -48,6 +51,133 @@ import java.net.URISyntaxException;
 public class MonetizationUtils {
 
     private static final Log log = LogFactory.getLog(MonetizationUtils.class);
+
+
+    /**
+     * Creates a billing price in Moesif for a given plan and tier.
+     *
+     * @param currentTier          The monetization tier details.
+     * @param planId               The Moesif plan ID under which this price should be created.
+     * @param moesifApplicationKey The Moesif application key for authentication.
+     * @param moesifPlanName       The associated Moesif plan name (used for meter naming).
+     * @return The response from Moesif API after creating the billing price.
+     * @throws MoesifMonetizationException if any error occurs while creating the price.
+     */
+    public static String createPriceInMoesif(Tier currentTier, String planId,
+                                             String moesifApplicationKey, String moesifPlanName)
+            throws MoesifMonetizationException {
+        String createPriceUrl;
+        String priceResponse;
+
+        try {
+            // Construct billing price URL for Stripe
+            createPriceUrl = MonetizationUtils.constructProviderURL(
+                    MoesifMonetizationConstants.BILLING_PRICE_URL, Provider.STRIPE);
+
+            // Build price creation payload
+            JsonObject createPricePayload = new JsonObject();
+            createPricePayload.addProperty("name", currentTier.getName());
+            createPricePayload.addProperty("provider", Provider.STRIPE.getValue());
+            createPricePayload.addProperty("plan_id", planId);
+            createPricePayload.addProperty("status", MoesifMonetizationConstants.BILLING_PRICE_STATUS_ACTIVE);
+
+            // Decide pricing model based on tier attributes
+            String pricePerRequest = currentTier.getMonetizationAttributes().get("pricePerRequest");
+            String fixedPrice = currentTier.getMonetizationAttributes().get("fixedPrice");
+
+            if (pricePerRequest != null && !pricePerRequest.isEmpty()) {
+                // Per-unit (metered) pricing model
+                createPricePayload.addProperty("pricing_model", MoesifPricingModel.PER_UNIT.getValue());
+                createPricePayload.addProperty("price_in_decimal", pricePerRequest);
+
+                // Attach billing meter
+                JsonObject billingMeterPayload = new JsonObject();
+                billingMeterPayload.addProperty("display_name", currentTier.getName() + " Meter");
+                billingMeterPayload.addProperty("event_name", moesifPlanName + " Event");
+                createPricePayload.add("price_meter", billingMeterPayload);
+
+                //Todo: The flow for the fixed price tier should be implemented and tested
+            } else if (fixedPrice != null && !fixedPrice.isEmpty()) {
+                // Flat-rate pricing model
+                createPricePayload.addProperty("pricing_model", MoesifPricingModel.FLAT_RATE.getValue());
+                createPricePayload.addProperty("price_in_decimal", fixedPrice);
+
+                // Placeholder for governance rule attachment
+                createPricePayload.addProperty("usage_aggregator", "");
+            }
+
+            //Todo: period and period_units should be handled dynamically,
+            // the possible set of values are not available in the Moesif openAPI spec
+            // once identified the 'billingCycle' can be used and reformat to match the expected format of Moesif
+            createPricePayload.addProperty("period", 1);
+            createPricePayload.addProperty("period_units", "M");
+            createPricePayload.addProperty("currency",
+                    currentTier.getMonetizationAttributes().get("currencyType"));
+
+            priceResponse = MonetizationUtils.invokeService("POST",
+                    createPriceUrl, createPricePayload.toString(), moesifApplicationKey);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Price creation payload: " + createPricePayload);
+                log.debug("Price creation response: " + priceResponse);
+            }
+            log.info("Moesif billing price created successfully for tier: " + currentTier.getName());
+
+        } catch (Exception e) {
+            String errorMessage = String.format(
+                    "Error while creating Moesif billing price for tier [%s] under plan [%s]",
+                    currentTier.getName(), planId);
+            log.error(errorMessage, e);
+            throw new MoesifMonetizationException(errorMessage, e);
+        }
+
+        return priceResponse;
+    }
+
+
+    /**
+     * Creates a billing plan in Moesif for the given API.
+     *
+     * @param api The API object for which the billing plan should be created.
+     * @return The response from Moesif API after creating the billing plan.
+     * @throws MoesifMonetizationException if any error occurs while creating the plan.
+     */
+    public static String createPlanInMoesif(API api, String moesifApplicationKey, String moesifPlanName)
+            throws MoesifMonetizationException {
+
+        String createBillingPlanURL;
+        String planResponse;
+
+        try {
+
+            // Construct billing plan URL for provider (Stripe in this case)
+            createBillingPlanURL = MonetizationUtils.constructProviderURL(
+                    MoesifMonetizationConstants.BILLING_PLANS_URL, Provider.STRIPE);
+
+            // Prepare JSON payload
+            JsonObject createPlanPayload = new JsonObject();
+            createPlanPayload.addProperty("name", moesifPlanName);
+            createPlanPayload.addProperty("status", MoesifMonetizationConstants.BILLING_PLAN_STATUS_ACTIVE);
+            createPlanPayload.addProperty("provider", Provider.STRIPE.getValue());
+
+            planResponse = MonetizationUtils.invokeService("POST", createBillingPlanURL, createPlanPayload.toString(),
+                    moesifApplicationKey);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Plan creation payload: " + createPlanPayload);
+            }
+            log.info("Plan created successfully in Moesif: " + moesifPlanName);
+
+        } catch (Exception e) {
+            String errorMessage = String.format(
+                    "Error while creating Moesif billing plan for API [name: %s, version: %s, provider: %s]",
+                    api.getId().getApiName(), api.getId().getVersion(), api.getId().getProviderName());
+            log.error(errorMessage, e);
+            throw new MoesifMonetizationException(errorMessage, e);
+        }
+
+        return planResponse;
+    }
 
 
     /**
@@ -67,7 +197,7 @@ public class MonetizationUtils {
             createUserPayload.addProperty("company_id", customer.getId());
             createUserPayload.addProperty("name", customer.getName());
 
-            String response = MonetizationUtils.invokeService(
+            String response = MonetizationUtils.invokeService("POST",
                     MoesifMonetizationConstants.MOESIF_USER_URL, createUserPayload.toString(), moesifApplicationKey);
 
             if (log.isDebugEnabled()) {
@@ -98,8 +228,8 @@ public class MonetizationUtils {
             throws IOException, APIManagementException {
         JsonObject createBillingMeterPayload = new JsonObject();
 
-        //ToDo: slug, url_query, and es_query should be dynamically generated based on the use case
-        // but the valid range of values should be identified first
+        // TODO: Dynamically generate slug, url_query, and es_query based on the use case.
+        //  Ensure that the valid range of values is clearly defined and validated beforehand.
         createBillingMeterPayload.addProperty("name", subscriptionId + "-billing-meter");
         createBillingMeterPayload.addProperty("slug", "hourly_usage");
         createBillingMeterPayload.addProperty("status", MoesifMonetizationConstants.BILLING_METER_STATUS_ACTIVE);
@@ -186,8 +316,6 @@ public class MonetizationUtils {
         // ===== size =====
         payload.addProperty("size", 0);
 
-        // ===== final =====
-        System.out.println(payload.toString());
 
         // attach to your createBillingMeterPayload
         createBillingMeterPayload.add("es_query", payload);
@@ -235,7 +363,7 @@ public class MonetizationUtils {
             log.debug("Moesif billing meter creation payload: " + createBillingMeterPayload);
         }
 
-        MonetizationUtils.invokeService(MoesifMonetizationConstants.BILLING_METER_URL,
+        MonetizationUtils.invokeService("POST", MoesifMonetizationConstants.BILLING_METER_URL,
                 createBillingMeterPayload.toString(), key);
 
     }
@@ -308,42 +436,17 @@ public class MonetizationUtils {
     }
 
     /**
-     * Invoke a REST API service
+     * Invokes an HTTP service with the specified method, URL, payload, and authorization token.
      *
-     * @param url     URL of the service
-     * @param payload Payload to be sent to the service
-     * @param token   Bearer token if any
-     * @return Response of the service
-     * @throws IOException            if an I/O exception occurs
-     * @throws APIManagementException if an error response is returned from the service
+     * @param method  The HTTP method to use (e.g., "GET", "POST", "PUT", "DELETE").
+     * @param url     The URL of the service to invoke.
+     * @param payload The request payload for methods like POST and PUT (can be null for GET and DELETE).
+     * @param token   The authorization token to include in the request headers (can be null if not needed).
+     * @return The response body as a String.
+     * @throws IOException            if an I/O exception occurs.
+     * @throws APIManagementException if an error response is returned from the service.
      */
-    public static String invokeService(String url, String payload, String token) throws IOException, APIManagementException {
-        HttpClient httpClient = APIUtil.getHttpClient(url); // keep pooled client
-
-        HttpPost post = new HttpPost(url);
-        post.setHeader(APIConstants.HEADER_CONTENT_TYPE, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
-        post.setHeader(APIConstants.HEADER_ACCEPT, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
-        if (token != null && !token.isEmpty()) {
-            post.setHeader("Authorization", "Bearer " + token);
-        }
-
-        if (payload != null) {
-            post.setEntity(new StringEntity(payload, "UTF-8"));
-        }
-
-        try (CloseableHttpResponse response = (CloseableHttpResponse) httpClient.execute(post)) {
-            int statusCode = response.getStatusLine().getStatusCode();
-            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
-
-            if (statusCode >= 200 && statusCode < 300) {
-                return responseBody;
-            } else {
-                throw new APIManagementException("Moesif call failed [" + statusCode + "] " + responseBody);
-            }
-        }
-    }
-
-    public static String invokeService(String url, String method, String payload, String token)
+    public static String invokeService(String method, String url, String payload, String token)
             throws IOException, APIManagementException {
 
         HttpClient httpClient = APIUtil.getHttpClient(url); // pooled client
@@ -399,9 +502,8 @@ public class MonetizationUtils {
     /***
      * Construct the URL according to the provider
      *
-     *
-     * @param URL
-     * @param provider
+     * @param URL URL
+     * @param provider provider
      * @return String formatted URL
      */
     public static String constructProviderURL(String URL, Provider provider) {
@@ -414,6 +516,20 @@ public class MonetizationUtils {
         URI billingReportURL = new URIBuilder(MoesifMonetizationConstants.BILLING_REPORT_URL)
                 .addParameter("subscription_id", subscriptionId)
                 .build();
-        return invokeService(billingReportURL.toString(), "GET", null, token);
+        return invokeService("GET", billingReportURL.toString(), null, token);
+    }
+
+    /**
+     * Extracts the "id" field from a JSON response string.
+     *
+     * @param jsonResponse The JSON response string from which to extract the ID.
+     * @return The extracted ID as a String, or null if not found.
+     */
+    public static String extractId(String jsonResponse) {
+        JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
+        if (jsonObject.has("id") && !jsonObject.get("id").isJsonNull()) {
+            return jsonObject.get("id").getAsString();
+        }
+        return null;
     }
 }

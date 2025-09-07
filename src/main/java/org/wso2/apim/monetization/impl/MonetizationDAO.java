@@ -27,7 +27,6 @@ import org.wso2.apim.monetization.impl.model.billing.SubscriptionInfo;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.MonetizationException;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
-import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 
 import java.sql.Connection;
@@ -40,7 +39,6 @@ import java.util.Map;
 public class MonetizationDAO {
     private static MonetizationDAO INSTANCE = null;
     private static final Log log = LogFactory.getLog(MonetizationDAO.class);
-    private ApiMgtDAO apiMgtDAO = ApiMgtDAO.getInstance();
 
     public static MonetizationDAO getInstance() {
         if (INSTANCE == null) {
