@@ -1,12 +1,32 @@
+/*
+ *  Copyright (c) 2005-2011, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  WSO2 Inc. licenses this file to you under the Apache License,
+ *  Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.apim.monetization.impl.util;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import okhttp3.HttpUrl;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.*;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.json.simple.JSONObject;
@@ -22,8 +42,8 @@ import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class MonetizationUtils {
 
@@ -389,10 +409,11 @@ public class MonetizationUtils {
     }
 
     public static String getBillingReport(String subscriptionId, String token)
-            throws IOException, APIManagementException {
+            throws IOException, APIManagementException, URISyntaxException {
 
-        String url = MoesifMonetizationConstants.BILLING_REPORT_URL + "?subscription_id=" +
-                URLEncoder.encode(subscriptionId, StandardCharsets.UTF_8);
-        return invokeService(url, "GET", null, token);
+        URI billingReportURL = new URIBuilder(MoesifMonetizationConstants.BILLING_REPORT_URL)
+                .addParameter("subscription_id", subscriptionId)
+                .build();
+        return invokeService(billingReportURL.toString(), "GET", null, token);
     }
 }

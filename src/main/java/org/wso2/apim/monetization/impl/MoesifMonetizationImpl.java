@@ -28,6 +28,7 @@ import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -275,7 +276,7 @@ public class MoesifMonetizationImpl implements Monetization {
         } catch (SQLException e) {
             String errorMessage = "Error while retrieving the API ID";
             throw new MonetizationException(errorMessage, e);
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
         return billingEngineUsageData;
