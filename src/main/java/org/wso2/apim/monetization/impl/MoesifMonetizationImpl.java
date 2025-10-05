@@ -226,10 +226,11 @@ public class MoesifMonetizationImpl implements Monetization {
             String moesifBillingReport = MonetizationUtils.getBillingReport(subscriptionInfo.getId(), moesifApplicationKey);
 
             JsonArray array = JsonParser.parseString(moesifBillingReport).getAsJsonArray();
-            JsonObject billingReport = array.get(0).getAsJsonObject();
-
-            if (billingReport == null) {
-                String errorMessage = "No billing engine subscription was found for : " + apiName;
+            JsonObject billingReport;
+            if (!array.isEmpty()) {
+                billingReport = array.get(0).getAsJsonObject();
+            } else {
+                String errorMessage = "No billing information available for : " + apiName;
                 //throw MonetizationException as it will be logged and handled by the caller
                 throw new MonetizationException(errorMessage);
             }

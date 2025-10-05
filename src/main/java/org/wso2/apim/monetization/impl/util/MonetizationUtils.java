@@ -47,10 +47,12 @@ import org.wso2.carbon.apimgt.impl.workflow.WorkflowException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MonetizationUtils {
 
     private static final Log log = LogFactory.getLog(MonetizationUtils.class);
+    private static final ConcurrentHashMap<String, String> moesifApplicationKeyCache = new ConcurrentHashMap<>();
 
 
     /**
@@ -410,8 +412,14 @@ public class MonetizationUtils {
      */
     public static String getMoesifApplicationKey(String tenantDomain) throws MoesifMonetizationException {
 
+        // Check cache first
+        String cachedKey = moesifApplicationKeyCache.get(tenantDomain);
+        if (cachedKey != null) {
+            return cachedKey;
+        }
+
         try {
-            //get the application key of platform account from tenant conf json file
+            // Get the application key of platform account from tenant conf json file
             JSONObject tenantConfig = APIUtil.getTenantConfig(tenantDomain);
 
             if (tenantConfig.containsKey(MoesifMonetizationConstants.MONETIZATION_INFO)) {
@@ -424,11 +432,13 @@ public class MonetizationUtils {
                         String errorMessage = "Moesif application key is empty for tenant : " + tenantDomain;
                         throw new MoesifMonetizationException(errorMessage);
                     }
+                    // Cache the key before returning
+                    moesifApplicationKeyCache.put(tenantDomain, moesifApplicationKey);
                     return moesifApplicationKey;
                 }
             }
         } catch (APIManagementException e) {
-            String errorMessage = "Failed to get the configuration for tenant from DB:  " + tenantDomain;
+            String errorMessage = "Failed to get the configuration for tenant from DB: " + tenantDomain;
             log.error(errorMessage);
             throw new MoesifMonetizationException(errorMessage, e);
         }
