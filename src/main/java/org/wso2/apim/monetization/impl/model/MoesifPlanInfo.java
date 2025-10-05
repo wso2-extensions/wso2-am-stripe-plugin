@@ -16,22 +16,28 @@
  * under the License.
  */
 
-package org.wso2.apim.monetization.impl;
+package org.wso2.apim.monetization.impl.model;
 
-import org.wso2.carbon.apimgt.api.MonetizationException;
+public class MoesifPlanInfo {
+    private String planId;
+    private String priceId;
+    private String planName;
 
-public class StripeMonetizationException extends MonetizationException {
-
-    public StripeMonetizationException(String msg) {
-        super(msg);
+    public MoesifPlanInfo(String planId, String priceId, String planName) {
+        this.planId = planId;
+        this.priceId = priceId;
+        this.planName = planName;
     }
 
-    public StripeMonetizationException(String msg, Throwable e) {
-        super(msg, e);
+    public String getPlanId() {
+        return planId;
     }
 
-    public StripeMonetizationException(Throwable throwable) {
-        super(throwable);
+    public String getPriceId() {
+        return priceId;
     }
 
+    public String getPlanName() {
+        return planName;
+    }
 }

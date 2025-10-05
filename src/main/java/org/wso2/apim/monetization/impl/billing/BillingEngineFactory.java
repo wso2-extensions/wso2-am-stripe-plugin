@@ -16,22 +16,13 @@
  * under the License.
  */
 
-package org.wso2.apim.monetization.impl;
+package org.wso2.apim.monetization.impl.billing;
 
-import org.wso2.carbon.apimgt.api.MonetizationException;
+public class BillingEngineFactory {
 
-public class StripeMonetizationException extends MonetizationException {
-
-    public StripeMonetizationException(String msg) {
-        super(msg);
+    public static BillingEngine getBillingEngine() {
+        // For now, we only support Stripe
+        // In the future, we can use a configuration to determine which billing engine to use
+        return new StripeBillingEngine();
     }
-
-    public StripeMonetizationException(String msg, Throwable e) {
-        super(msg, e);
-    }
-
-    public StripeMonetizationException(Throwable throwable) {
-        super(throwable);
-    }
-
 }

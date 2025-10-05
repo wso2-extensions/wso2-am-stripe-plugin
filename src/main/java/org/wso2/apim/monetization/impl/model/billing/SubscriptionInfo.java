@@ -16,22 +16,29 @@
  * under the License.
  */
 
-package org.wso2.apim.monetization.impl;
+package org.wso2.apim.monetization.impl.model.billing;
 
-import org.wso2.carbon.apimgt.api.MonetizationException;
+/**
+ * Represents a generic subscription in the billing system
+ */
+public class SubscriptionInfo {
 
-public class StripeMonetizationException extends MonetizationException {
+    private String id;
+    private String customerId;
 
-    public StripeMonetizationException(String msg) {
-        super(msg);
+    public String getId() {
+        return id;
     }
 
-    public StripeMonetizationException(String msg, Throwable e) {
-        super(msg, e);
+    public void setId(String id) {
+        this.id = id;
     }
 
-    public StripeMonetizationException(Throwable throwable) {
-        super(throwable);
+    public String getCustomerId() {
+        return customerId;
     }
 
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
+    }
 }

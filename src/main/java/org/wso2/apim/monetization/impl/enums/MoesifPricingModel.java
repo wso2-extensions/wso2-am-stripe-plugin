@@ -16,22 +16,19 @@
  * under the License.
  */
 
-package org.wso2.apim.monetization.impl;
+package org.wso2.apim.monetization.impl.enums;
 
-import org.wso2.carbon.apimgt.api.MonetizationException;
+public enum MoesifPricingModel {
 
-public class StripeMonetizationException extends MonetizationException {
+    FLAT_RATE("flat"),
+    PER_UNIT("per_unit");
+    private final String value;
 
-    public StripeMonetizationException(String msg) {
-        super(msg);
+    MoesifPricingModel(String value) {
+        this.value = value;
     }
 
-    public StripeMonetizationException(String msg, Throwable e) {
-        super(msg, e);
+    public String getValue() {
+        return value;
     }
-
-    public StripeMonetizationException(Throwable throwable) {
-        super(throwable);
-    }
-
 }

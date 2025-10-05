@@ -16,22 +16,20 @@
  * under the License.
  */
 
-package org.wso2.apim.monetization.impl;
+package org.wso2.apim.monetization.impl.enums;
 
-import org.wso2.carbon.apimgt.api.MonetizationException;
+public enum Provider {
+    STRIPE("stripe"),
+    CHARGEBEE("chargebee"),
+    RECURLY("recurly"),
+    ZUORA("zuora");
 
-public class StripeMonetizationException extends MonetizationException {
+    private final String value;
 
-    public StripeMonetizationException(String msg) {
-        super(msg);
+    Provider(String value) {
+        this.value = value;
     }
-
-    public StripeMonetizationException(String msg, Throwable e) {
-        super(msg, e);
+    public String getValue() {
+        return value;
     }
-
-    public StripeMonetizationException(Throwable throwable) {
-        super(throwable);
-    }
-
 }
