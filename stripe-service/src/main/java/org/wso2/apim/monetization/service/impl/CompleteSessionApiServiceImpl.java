@@ -1,0 +1,131 @@
+/*
+ *  Copyright (c) 2026, WSO2 LLC. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+package org.wso2.apim.monetization.service.impl;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.apim.monetization.impl.StripeMonetizationConstants;
+import org.wso2.apim.monetization.impl.StripeMonetizationDAO;
+import org.wso2.apim.monetization.impl.StripeMonetizationException;
+import org.wso2.apim.monetization.impl.util.MonetizationUtil;
+import org.wso2.carbon.apimgt.api.APIManagementException;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.Map;
+
+/**
+ * REST API service implementation for completing a Stripe Checkout session.
+ */
+@Path("/complete-session")
+public class CompleteSessionApiServiceImpl {
+
+    private static final Log log = LogFactory.getLog(CompleteSessionApiServiceImpl.class);
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response completeSession(@QueryParam("session_id") String sessionId) {
+
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("{\"error\":\"session_id query parameter is required\"}")
+                    .build();
+        }
+
+        Map<String, String> sessionRow;
+        try {
+            sessionRow = StripeMonetizationDAO.getInstance().getCheckoutSession(sessionId);
+        } catch (StripeMonetizationException e) {
+            log.error("Failed to retrieve checkout session for sessionId: " + sessionId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\":\"Database error\"}")
+                    .build();
+        }
+
+        if (sessionRow == null || sessionRow.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("{\"error\":\"No checkout session found for the given session_id\"}")
+                    .build();
+        }
+
+        String workflowReference = sessionRow.get(StripeMonetizationConstants.CHECKOUT_COL_WORKFLOW_REF);
+        String status = sessionRow.get(StripeMonetizationConstants.CHECKOUT_COL_STATUS);
+
+        if (StripeMonetizationConstants.CHECKOUT_SESSION_STATUS_COMPLETED.equals(status)) {
+            return Response.ok("{\"status\":\"already_completed\"}").build();
+        }
+
+        if (workflowReference == null || workflowReference.isEmpty()) {
+            log.error("Checkout session row missing workflowReference for sessionId: " + sessionId);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\":\"Missing workflow reference in checkout session\"}")
+                    .build();
+        }
+
+        // Guard: confirm payment status directly with Stripe before activating the subscription
+        String tenantIdStr = sessionRow.get(StripeMonetizationConstants.CHECKOUT_COL_TENANT_ID);
+        String apiUuid = sessionRow.get(StripeMonetizationConstants.CHECKOUT_COL_API_UUID);
+        int tenantId;
+        try {
+            tenantId = Integer.parseInt(tenantIdStr);
+        } catch (NumberFormatException e) {
+            log.error("Invalid tenantId in checkout session row for sessionId: " + sessionId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\":\"Invalid session data\"}")
+                    .build();
+        }
+        String tenantDomain = APIUtil.getTenantDomainFromTenantId(tenantId);
+        try {
+            MonetizationUtil.requireCheckoutSessionPaid(sessionId, tenantId, apiUuid, tenantDomain);
+        } catch (StripeMonetizationException e) {
+            log.warn("Stripe session not paid — subscription activation blocked: sessionId="
+                    + sessionId + " — " + e.getMessage());
+            return Response.status(Response.Status.PAYMENT_REQUIRED)
+                    .entity("{\"error\":\"Payment not yet complete. Please complete checkout before proceeding.\"}")
+                    .build();
+        }
+
+        try {
+            boolean claimed = StripeMonetizationDAO.getInstance().claimCheckoutSession(sessionId);
+            if (!claimed) {
+                return Response.ok("{\"status\":\"already_completed\"}").build();
+            }
+        } catch (StripeMonetizationException e) {
+            log.error("Failed to claim checkout session for sessionId: " + sessionId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\":\"Database error\"}")
+                    .build();
+        }
+
+        try {
+            WebhookApiServiceImpl.completeWorkflow(workflowReference);
+        } catch (APIManagementException e) {
+            log.error("Failed to complete workflow for reference: " + workflowReference, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\":\"Workflow completion failed\"}")
+                    .build();
+        }
+
+        return Response.ok("{\"status\":\"completed\"}").build();
+    }
+}

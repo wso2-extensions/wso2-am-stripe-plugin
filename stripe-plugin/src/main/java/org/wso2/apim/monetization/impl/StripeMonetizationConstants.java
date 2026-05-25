@@ -53,9 +53,9 @@ public class StripeMonetizationConstants {
 
     public static final String ADD_BE_SHARED_CUSTOMER_SQL =
             " INSERT" +
-                    " INTO AM_MONETIZATION_SHARED_CUSTOMERS (APPLICATION_ID,  API_PROVIDER," +
-                    " TENANT_ID, SHARED_CUSTOMER_ID, PARENT_CUSTOMER_ID)" +
-                    " VALUES (?,?,?,?,?)";
+                    " INTO AM_MONETIZATION_SHARED_CUSTOMERS (APPLICATION_ID, API_PROVIDER," +
+                    " TENANT_ID, SHARED_CUSTOMER_ID)" +
+                    " VALUES (?,?,?,?)";
 
     public static final String ADD_BE_SUBSCRIPTION_SQL =
             " INSERT" +
@@ -69,6 +69,9 @@ public class StripeMonetizationConstants {
                     " FROM AM_MONETIZATION_PLATFORM_CUSTOMERS" +
                     " WHERE" +
                     " SUBSCRIBER_ID=? AND TENANT_ID=?";
+
+    public static final String UPDATE_BE_SHARED_CUSTOMER_ID_SQL =
+            "UPDATE AM_MONETIZATION_SHARED_CUSTOMERS SET SHARED_CUSTOMER_ID = ? WHERE ID = ?";
 
     public static final String GET_BE_SHARED_CUSTOMER_SQL =
             " SELECT" +
@@ -87,6 +90,23 @@ public class StripeMonetizationConstants {
                     " AND TENANT_ID=?";
 
     public static final String DELETE_BE_SUBSCRIPTION_SQL = "DELETE FROM AM_MONETIZATION_SUBSCRIPTIONS WHERE ID=?";
+
+    public static final String GET_STRIPE_SUBSCRIPTION_BY_APIM_SUB_ID =
+            "SELECT ms.SUBSCRIPTION_ID AS STRIPE_SUB_ID, sc.SHARED_CUSTOMER_ID" +
+            " FROM AM_SUBSCRIPTION s" +
+            " INNER JOIN AM_MONETIZATION_SUBSCRIPTIONS ms" +
+            "   ON s.API_ID = ms.SUBSCRIBED_API_ID AND s.APPLICATION_ID = ms.SUBSCRIBED_APPLICATION_ID" +
+            " INNER JOIN AM_MONETIZATION_SHARED_CUSTOMERS sc ON ms.SHARED_CUSTOMER_ID = sc.ID" +
+            " WHERE s.SUBSCRIPTION_ID = ?";
+
+    public static final String GET_APIM_SUBSCRIPTION_ID_BY_STRIPE_SUB_ID =
+            "SELECT s.SUBSCRIPTION_ID FROM AM_SUBSCRIPTION s" +
+            " INNER JOIN AM_MONETIZATION_SUBSCRIPTIONS m ON s.API_ID = m.SUBSCRIBED_API_ID" +
+            "  AND s.APPLICATION_ID = m.SUBSCRIBED_APPLICATION_ID" +
+            " WHERE m.SUBSCRIPTION_ID = ?";
+
+    public static final String GET_MONETIZATION_ROW_ID_BY_STRIPE_SUB_ID =
+            "SELECT m.ID FROM AM_MONETIZATION_SUBSCRIPTIONS m WHERE m.SUBSCRIPTION_ID = ?";
 
     public static final String TYPE = "type";
     public static final String SERVICE_TYPE = "service";
@@ -118,7 +138,6 @@ public class StripeMonetizationConstants {
     public static final String METERED_PLAN = "metered";
     public static final String CUSTOMER_DESCRIPTION = "description";
     public static final String CUSTOMER_EMAIL = "email";
-    public static final String CUSTOMER_SOURCE = "source";
     public static final String ITEMS = "items";
     public static final String ACTION = "action";
     public static final String INCREMENT = "increment";
@@ -133,7 +152,6 @@ public class StripeMonetizationConstants {
     public static final String SUCCESSFULL = "SUCCESSFULL";
     public static final String UNSUCCESSFULL = "UNSUCCESSFULL";
     public static final String FILE_SEPERATOR = "/";
-    public static final String DEFAULT_TOKEN = "tok_visa";
     public static final String INVOICE_NOW = "invoice_now";
     public static final String CANCELED = "canceled";
     public static final String ANALYTICS_ACCESS_TOKEN_PROP = "Monetization.UsagePublisher.AnalyticsAccessToken";
@@ -166,4 +184,66 @@ public class StripeMonetizationConstants {
     public static final String HTTPS_PROTOCOL = "https";
 
     public static final String MONETIZATION_PROXY_ENABLE_CONFIG = "Monetization.ProxyEnabled";
+
+    // Stripe Checkout session table and SQL
+    public static final String ADD_CHECKOUT_SESSION_SQL =
+            "INSERT INTO AM_STRIPE_CHECKOUT_SESSIONS" +
+            " (SESSION_ID, WORKFLOW_REFERENCE, SUBSCRIBER_ID, TENANT_ID, API_UUID, CHECKOUT_URL, STATUS, CREATED_AT)" +
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    public static final String GET_CHECKOUT_URL_BY_WORKFLOW_REF_SQL =
+            "SELECT CHECKOUT_URL FROM AM_STRIPE_CHECKOUT_SESSIONS WHERE WORKFLOW_REFERENCE = ?";
+    public static final String GET_CHECKOUT_URL_BY_SUBSCRIPTION_ID_SQL =
+            "SELECT s.CHECKOUT_URL FROM AM_STRIPE_CHECKOUT_SESSIONS s" +
+            " JOIN AM_WORKFLOWS w ON w.WF_EXTERNAL_REFERENCE = s.WORKFLOW_REFERENCE" +
+            " JOIN AM_SUBSCRIPTION sub ON CAST(sub.SUBSCRIPTION_ID AS CHAR(20)) = w.WF_REFERENCE" +
+            " WHERE sub.UUID = ? AND w.WF_TYPE = 'AM_SUBSCRIPTION_CREATION'" +
+            " AND s.STATUS = 'PENDING'";
+    public static final String GET_CHECKOUT_SESSION_BY_SESSION_ID_SQL =
+            "SELECT SESSION_ID, WORKFLOW_REFERENCE, SUBSCRIBER_ID, TENANT_ID, API_UUID, STATUS" +
+            " FROM AM_STRIPE_CHECKOUT_SESSIONS WHERE SESSION_ID = ?";
+    public static final String GET_CHECKOUT_SESSION_BY_WORKFLOW_REF_SQL =
+            "SELECT SESSION_ID, WORKFLOW_REFERENCE, SUBSCRIBER_ID, TENANT_ID, API_UUID, STATUS" +
+            " FROM AM_STRIPE_CHECKOUT_SESSIONS WHERE WORKFLOW_REFERENCE = ?";
+    public static final String UPDATE_CHECKOUT_SESSION_STATUS_SQL =
+            "UPDATE AM_STRIPE_CHECKOUT_SESSIONS SET STATUS = ?, UPDATED_AT = ? WHERE SESSION_ID = ?";
+    public static final String CLAIM_CHECKOUT_SESSION_SQL =
+            "UPDATE AM_STRIPE_CHECKOUT_SESSIONS SET STATUS = 'COMPLETED', UPDATED_AT = ?" +
+            " WHERE SESSION_ID = ? AND STATUS = 'PENDING'";
+
+    // Column name constants for AM_STRIPE_CHECKOUT_SESSIONS
+    public static final String CHECKOUT_COL_SESSION_ID = "SESSION_ID";
+    public static final String CHECKOUT_COL_WORKFLOW_REF = "WORKFLOW_REFERENCE";
+    public static final String CHECKOUT_COL_SUBSCRIBER_ID = "SUBSCRIBER_ID";
+    public static final String CHECKOUT_COL_TENANT_ID = "TENANT_ID";
+    public static final String CHECKOUT_COL_API_UUID = "API_UUID";
+    public static final String CHECKOUT_COL_STATUS = "STATUS";
+
+    // Checkout session status values
+    public static final String CHECKOUT_SESSION_STATUS_PENDING = "PENDING";
+    public static final String CHECKOUT_SESSION_STATUS_COMPLETED = "COMPLETED";
+    public static final String CHECKOUT_SESSION_STATUS_EXPIRED = "EXPIRED";
+
+    // Tenant config key for per-tenant webhook secret
+    public static final String STRIPE_WEBHOOK_SECRET = "StripeWebhookSecret";
+
+    public static final String GET_SUBSCRIBER_BY_SUBSCRIPTION_UUID_SQL =
+            "SELECT s.USER_ID FROM AM_SUBSCRIPTION sub " +
+            "JOIN AM_APPLICATION app ON sub.APPLICATION_ID = app.APPLICATION_ID " +
+            "JOIN AM_SUBSCRIBER s ON app.SUBSCRIBER_ID = s.SUBSCRIBER_ID " +
+            "WHERE sub.UUID = ?";
+
+    public static final String GET_SUBSCRIBER_BY_SUBSCRIPTION_ID_SQL =
+            "SELECT s.USER_ID FROM AM_SUBSCRIPTION sub " +
+            "JOIN AM_APPLICATION app ON sub.APPLICATION_ID = app.APPLICATION_ID " +
+            "JOIN AM_SUBSCRIBER s ON app.SUBSCRIBER_ID = s.SUBSCRIBER_ID " +
+            "WHERE sub.SUBSCRIPTION_ID = ?";
+
+    // Stripe webhook event type
+    public static final String STRIPE_WEBHOOK_EVENT_CHECKOUT_COMPLETED = "checkout.session.completed";
+    public static final String STRIPE_WEBHOOK_EVENT_CHECKOUT_EXPIRED = "checkout.session.expired";
+    public static final String STRIPE_WEBHOOK_EVENT_INVOICE_PAYMENT_FAILED = "invoice.payment_failed";
+    public static final String STRIPE_WEBHOOK_EVENT_INVOICE_PAYMENT_SUCCEEDED = "invoice.payment_succeeded";
+    public static final String STRIPE_WEBHOOK_EVENT_INVOICE_PAYMENT_ACTION_REQUIRED = "invoice.payment_action_required";
+    public static final String STRIPE_WEBHOOK_EVENT_SUBSCRIPTION_DELETED = "customer.subscription.deleted";
+    public static final String STRIPE_WEBHOOK_EVENT_SUBSCRIPTION_UPDATED = "customer.subscription.updated";
 }
