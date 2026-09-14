@@ -16,7 +16,7 @@ A Stripe monetization integration for WSO2 API Manager 4.x. Enables API provider
 
 ## Compatibility
 
-**This version (v1.6.0) supports WSO2 API Manager 4.5.0 and above.** For older APIM versions, use the corresponding earlier release.
+**This version (v1.6.1) supports WSO2 API Manager 4.5.0 and above.** For older APIM versions, use the corresponding earlier release.
 
 | Extension Version | WSO2 API Manager Version |
 |:-:|:-:|
