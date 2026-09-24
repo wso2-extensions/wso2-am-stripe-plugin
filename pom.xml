@@ -21,7 +21,7 @@
 
     <groupId>org.wso2.apim.monetization</groupId>
     <artifactId>org.wso2.apim.monetization.impl</artifactId>
-    <version>1.5.1-SNAPSHOT</version>
+    <version>1.5.1</version>
     <packaging>bundle</packaging>
 
     <parent>
@@ -66,11 +66,6 @@
             <artifactId>elasticsearch-rest-client</artifactId>
             <version>${elastic.rest.client.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-api</artifactId>
-            <version>${opentelemetry-api.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -90,7 +85,6 @@
         <stripe.version>9.8.0</stripe.version>
         <elastic.client.version>8.13.1</elastic.client.version>
         <elastic.rest.client.version>8.13.1</elastic.rest.client.version>
-        <opentelemetry-api.version>1.29.0</opentelemetry-api.version>
         <http.async.client.version>4.1.5</http.async.client.version>
         <jakarta.json.version>2.0.1</jakarta.json.version>
         <parsson.version>1.0.1</parsson.version>
@@ -133,7 +127,6 @@
                         </Import-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                         <Embed-Dependency>
-                            opentelemetry-api;scope=compile|runtime;inline=false,
                             httpasyncclient;scope=compile|runtime;inline=false,
                         </Embed-Dependency>
                     </instructions>
